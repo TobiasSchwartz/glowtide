@@ -1,0 +1,11 @@
+<script>
+(function(){let t=0,q=[];
+performance.now=()=>t;
+window.requestAnimationFrame=cb=>{q.push(cb);return q.length};
+window.cancelAnimationFrame=()=>{};
+Object.defineProperty(document,'visibilityState',{get:()=>'visible'});
+Object.defineProperty(document,'hidden',{get:()=>false});
+window.__errs=[];window.addEventListener('error',e=>__errs.push(String(e.message)));
+window.tick=n=>{for(let i=0;i<n;i++){t+=1000/60;const c=q;q=[];c.forEach(f=>f(t));}};
+})();
+</script>

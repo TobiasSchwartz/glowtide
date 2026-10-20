@@ -1,0 +1,2988 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#04121F">
+<meta name="description" content="Three-lane bioluminescent horde defense for one thumb.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Glowtide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600&family=Unbounded:wght@700;900&display=swap">
+<style>
+:root{color-scheme:dark;--cyan:#4FF0E0;--amber:#FFD76A;--coral:#FF6A3D;--danger:#FF2E63;--violet:#7928CA;--ink:#04121F}
+html,body{height:100%;margin:0;overflow:hidden;background:#04121F;touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+#game{position:fixed;inset:0;display:block;touch-action:none}
+.hidden{display:none!important}
+.ui{font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;color:#CBE6F5}
+button{font-family:'Sora',system-ui,sans-serif;cursor:pointer;border:0;color:#04121F;background:var(--cyan);border-radius:14px;min-height:48px;font-weight:600;font-size:16px;padding:0 18px;letter-spacing:.02em}
+button.ghost{background:transparent;color:#CBE6F5;border:1px solid #2b4f70}
+button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+/* HUD */
+#hud{position:fixed;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 8px) calc(env(safe-area-inset-right,0px) + 12px) 0 calc(env(safe-area-inset-left,0px) + 12px);z-index:10;pointer-events:none}
+#hudRow{display:flex;align-items:flex-start;gap:10px;justify-content:space-between}
+.hudStat{display:flex;flex-direction:column;line-height:1}
+.hudStat .lbl{font-size:9px;letter-spacing:.18em;color:#5f86a6;font-weight:600}
+.hudStat .val{font-family:'Unbounded',system-ui,sans-serif;font-weight:700;font-size:19px;color:#EAFBFF;text-shadow:0 0 12px rgba(79,240,224,.5)}
+#hudBtns{display:flex;gap:8px;pointer-events:auto}
+#hudBtns button{min-height:40px;width:44px;padding:0;font-size:17px;background:rgba(12,42,66,.72);color:#9fe8f2;border:1px solid #24506f}
+#zoneBar{margin-top:8px;height:5px;border-radius:4px;background:rgba(27,58,92,.7);overflow:hidden;max-width:340px}
+#zoneFill{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--amber));transition:width .1s linear}
+#bossbar{margin-top:8px;height:12px;border-radius:7px;background:rgba(121,40,202,.28);border:1px solid #5b2a86;overflow:hidden;max-width:420px}
+#bossfill{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7928CA,#FF2E63);transition:width .15s linear}
+/* screens */
+.screen{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 24px) 18px calc(env(safe-area-inset-bottom,0px) + 24px);box-sizing:border-box;background:radial-gradient(120% 80% at 50% 8%,rgba(10,37,64,.72),rgba(4,18,31,.94) 72%)}
+#title{font-family:'Sora',system-ui,sans-serif;color:#CBE6F5}
+.wordmark{font-family:'Unbounded',system-ui,sans-serif;font-weight:900;font-size:clamp(38px,14vw,58px);letter-spacing:.03em;color:#EAFBFF;margin:0;text-align:center;animation:pulse 3.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{text-shadow:0 0 18px rgba(79,240,224,.35),0 0 44px rgba(79,240,224,.18)}50%{text-shadow:0 0 30px rgba(79,240,224,.75),0 0 70px rgba(184,255,242,.4)}}
+@media (prefers-reduced-motion:reduce){.wordmark{animation:none;text-shadow:0 0 24px rgba(79,240,224,.5)}}
+.tagline{font-size:14px;color:#6fa6c4;margin:6px 0 16px;letter-spacing:.14em;text-transform:uppercase}
+.vname{font-family:'Unbounded',system-ui,sans-serif;font-weight:700;font-size:13px;color:#EAFBFF}
+.vdesc{font-size:11px;color:#8fb4cc;margin-top:5px;line-height:1.35}
+.vcond{font-size:10px;color:var(--amber);margin-top:5px;letter-spacing:.04em}
+.rowbtns{display:flex;gap:10px;width:100%;max-width:400px;margin-top:12px}
+.rowbtns button{flex:1}
+/* title: one swipeable row of dive cards (today's dive, then vents 1-4), one Dive button, icon buttons */
+.dives{display:flex;gap:12px;width:calc(100% + 36px);max-width:460px;margin:4px -18px 0;padding:6px min(9%,40px);box-sizing:border-box;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;touch-action:pan-x pan-y;overscroll-behavior-x:contain}
+.dives::-webkit-scrollbar{display:none}
+.dcard{--tint:79,240,224;position:relative;flex:0 0 100%;scroll-snap-align:center;box-sizing:border-box;min-height:224px;display:flex;flex-direction:column;gap:6px;padding:18px 18px 16px;border-radius:22px;text-align:left;color:#CBE6F5;background:radial-gradient(120% 90% at 100% 0%,rgba(var(--tint),.16),rgba(var(--tint),0) 60%),rgba(8,30,52,.82);border:1px solid #1d4468;cursor:pointer;overflow:hidden;transition:border-color .2s,opacity .2s,transform .2s}
+.dcard:not(.on){opacity:.5;transform:scale(.96)}
+.dcard.on{border-color:rgba(var(--tint),.75);box-shadow:0 0 28px rgba(var(--tint),.16)}
+.dcard:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.dnum{position:absolute;top:6px;right:14px;font-family:'Unbounded',system-ui,sans-serif;font-weight:900;font-size:64px;line-height:1;color:rgba(var(--tint),.16);pointer-events:none}
+.deye{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#6fa6c4;font-weight:600}
+.dname{font-family:'Unbounded',system-ui,sans-serif;font-weight:700;font-size:24px;color:#EAFBFF;line-height:1.1}
+.drole{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgb(var(--tint));font-weight:600}
+.dtext{font-size:14px;line-height:1.5;color:#A9C6D8;margin-top:4px;max-width:34ch}
+.dmods{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.dmod{font-size:13px;line-height:1.4;color:#A9C6D8}
+.dmod b{display:block;font-family:'Unbounded',system-ui,sans-serif;font-weight:700;font-size:12px;color:#FFE9B8}
+.dfoot{margin-top:auto;padding-top:8px;font-size:12px;color:#6fa6c4;font-variant-numeric:tabular-nums}
+.dcard.locked .dname,.dcard.locked .dtext{opacity:.6}
+.dcard.locked .dfoot{color:var(--amber)}
+.ddots{display:flex;gap:8px;margin:12px 0 4px}
+.ddots button{width:8px;height:8px;min-height:0;padding:0;border-radius:50%;background:#24506f}
+.ddots button.on{background:var(--cyan);box-shadow:0 0 10px rgba(79,240,224,.7)}
+.ddots button.day{background:#6b5a2a}
+.ddots button.day.on{background:var(--amber);box-shadow:0 0 10px rgba(255,215,106,.7)}
+.playBtn{width:100%;max-width:340px;min-height:54px;margin-top:10px;font-family:'Unbounded',system-ui,sans-serif;font-weight:700;font-size:17px;letter-spacing:.06em}
+.playBtn:disabled{background:#1d4468;color:#8fb4cc;cursor:not-allowed}
+.playBtn.day{background:var(--amber)}
+.iconRow{display:flex;gap:16px;margin-top:16px}
+.ibtn{width:52px;height:52px;min-height:0;padding:0;border-radius:50%;background:transparent;border:1px solid #2b4f70;color:#CBE6F5;display:grid;place-items:center}
+.ibtn svg,#btnMute svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ibtn svg .fill{fill:currentColor;stroke:none}
+#btnMute{display:grid;place-items:center}
+@media (prefers-reduced-motion:reduce){.dcard{transition:none}.dcard:not(.on){transform:none}}
+#toast{position:fixed;left:0;right:0;top:0;transform:translateY(-50%);z-index:15;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.msg{font-family:'Unbounded',system-ui,sans-serif;font-size:14px;color:#FFE9B8;background:rgba(20,42,60,.85);border:1px solid var(--amber);border-radius:12px;padding:9px 16px;box-shadow:0 0 22px rgba(255,215,106,.25)}
+.govRow{display:flex;justify-content:space-between;font-size:14px;padding:7px 2px;border-bottom:1px solid rgba(27,58,92,.6);max-width:320px;width:100%}
+.govRow b{font-family:'Unbounded',system-ui,sans-serif;font-weight:700;color:#EAFBFF}
+#over h2,#pause h2,#boon h2{font-family:'Unbounded',system-ui,sans-serif;font-weight:900;margin:0 0 4px;color:#EAFBFF;font-size:28px}
+.sub{font-size:12px;color:#6fa6c4;letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
+.newbest{font-family:'Unbounded',system-ui,sans-serif;font-size:13px;color:var(--amber);margin:10px 0}
+.unlock{font-size:13px;color:var(--cyan);margin:4px 0;text-align:center}
+.msg.dim{opacity:.62;border-color:#3c617f;color:#A9C6D8;box-shadow:none}
+.guideBtn{width:100%;max-width:400px;margin-top:10px}
+.guideList{width:100%;max-width:440px;max-height:58vh;overflow-y:auto;text-align:left;padding:2px 4px 2px 0}
+/* intro */
+#intro{touch-action:none}
+.introCard{width:100%;max-width:380px;box-sizing:border-box;background:rgba(10,37,64,.74);border:1px solid #1d4468;border-radius:22px;padding:16px 18px 18px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.45);overflow:hidden}
+.introArt{height:150px;display:flex;align-items:center;justify-content:center;margin:0 0 4px}
+.introArt svg{width:100%;max-width:300px;height:150px;display:block}
+.introTitle{font-family:'Unbounded',system-ui,sans-serif;font-weight:900;font-size:22px;color:#EAFBFF;margin:6px 0 8px}
+.introText{font-size:16px;line-height:1.5;color:#A9C6D8;margin:0 auto;max-width:330px;min-height:72px}
+.introDots{display:flex;gap:7px;margin:14px 0 4px}
+.introDots i{width:7px;height:7px;border-radius:50%;background:#24506f;transition:background .2s,transform .2s}
+.introDots i.on{background:var(--cyan);transform:scale(1.25);box-shadow:0 0 10px rgba(79,240,224,.7)}
+.introBtns{max-width:340px;margin-top:10px}
+.introSkip{margin-top:2px}
+.gSec{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#5f86a6;font-weight:600;margin:14px 0 5px}
+.gSec:first-child{margin-top:0}
+.gEntry{border-bottom:1px solid rgba(27,58,92,.55);padding:7px 2px}
+.gName{font-family:'Unbounded',system-ui,sans-serif;font-weight:700;font-size:12px;color:#EAFBFF}
+.gText{font-size:11px;color:#8fb4cc;margin-top:3px;line-height:1.4}
+.gEntry.unseen .gName{color:#4d6f8a}
+.gEntry.unseen .gText{color:#3f6079}
+.linkbtn{background:transparent;border:0;color:#6fa6c4;font-size:12px;text-decoration:underline;min-height:40px;margin-top:8px;padding:0 8px}
+.boonList{display:flex;flex-direction:column;gap:10px;width:100%;max-width:380px;margin-top:6px}
+.bcard{display:block;width:100%;text-align:left;background:rgba(10,37,64,.85);color:#CBE6F5;border:1px solid #1d4468;border-radius:16px;padding:14px 16px;min-height:64px}
+.bcard:active{transform:scale(.98)}
+.bcard .vname{font-size:15px}
+.bcard .vdesc{font-size:13px}
+.bcard .vdesc b{color:#EAFBFF}
+.bcard .chip{float:right;font-family:'Sora',system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#6fa6c4;margin-top:2px}
+.bcard.rare{border-color:var(--amber);box-shadow:0 0 22px rgba(255,215,106,.18)}
+.bcard.rare .chip{color:var(--amber)}
+#safeProbe{position:fixed;left:0;bottom:0;width:1px;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden}
+</style>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="hudRow">
+    <div class="hudStat"><span class="lbl">SCORE</span><span class="val" id="hScore">0</span></div>
+    <div class="hudStat"><span class="lbl">DEPTH</span><span class="val" id="hDepth">0m</span></div>
+    <div id="hudBtns">
+      <button id="btnPause" aria-label="Pause">II</button>
+      <button id="btnMute" aria-label="Mute">&#9835;</button>
+    </div>
+  </div>
+  <div id="zoneBar"><i id="zoneFill"></i></div>
+  <div id="bossbar" class="hidden"><i id="bossfill"></i></div>
+</div>
+
+<div id="title" class="screen ui">
+  <h1 class="wordmark">GLOWTIDE</h1>
+  <div class="tagline">Hold the reef.</div>
+  <div class="dives" id="diveList" aria-label="Choose a dive"></div>
+  <div class="ddots" id="diveDots"></div>
+  <button id="btnPlay" class="playBtn">Dive</button>
+  <div class="iconRow">
+    <button id="btnHowto" class="ibtn" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .9-1 1.7"/><circle cx="12" cy="17" r=".8" class="fill"/></svg></button>
+    <button id="btnGuide" class="ibtn" aria-label="Field guide" title="Field guide"><svg viewBox="0 0 24 24"><path d="M5 4.5h10.5A2.5 2.5 0 0 1 18 7v13H7.5A2.5 2.5 0 0 1 5 17.5z"/><path d="M5 17.5A2.5 2.5 0 0 1 7.5 15H18"/></svg></button>
+    <button id="btnMuteTitle" class="ibtn" aria-label="Sound" title="Sound"></button>
+  </div>
+</div>
+
+<div id="intro" class="screen ui hidden">
+  <div class="introCard">
+    <div class="introArt" id="introArt" aria-hidden="true"></div>
+    <h2 class="introTitle" id="introTitle"></h2>
+    <p class="introText" id="introText"></p>
+  </div>
+  <div class="introDots" id="introDots" aria-label="Intro progress"></div>
+  <div class="rowbtns introBtns">
+    <button id="btnIntroNext">Next</button>
+  </div>
+  <button id="btnIntroSkip" class="linkbtn introSkip">Skip</button>
+</div>
+
+<div id="guide" class="screen ui hidden">
+  <h2>FIELD GUIDE</h2>
+  <div class="sub">Everything down here</div>
+  <div id="guideList" class="guideList"></div>
+  <div class="rowbtns" style="max-width:340px">
+    <button id="btnGuideClose">Close</button>
+  </div>
+  <button id="btnResetTips" class="linkbtn">Reset tips</button>
+</div>
+
+<div id="pause" class="screen ui hidden">
+  <h2>PAUSED</h2>
+  <div class="sub">Tap anywhere to resume</div>
+  <div class="rowbtns" style="max-width:260px">
+    <button id="btnResume">Resume</button>
+    <button id="btnQuit" class="ghost">Menu</button>
+  </div>
+</div>
+
+<div id="over" class="screen ui hidden">
+  <h2>GAME OVER</h2>
+  <div class="sub" id="ovSub">The dark closed in</div>
+  <div class="govRow"><span>Score</span><b id="ovScore">0</b></div>
+  <div class="govRow"><span>Depth</span><b id="ovDepth">0m</b></div>
+  <div class="govRow"><span>Kills</span><b id="ovKills">0</b></div>
+  <div class="govRow"><span>Gates claimed</span><b id="ovGates">0</b></div>
+  <div class="govRow"><span id="ovBestLbl">Best</span><b id="ovBest">0</b></div>
+  <div class="newbest hidden" id="ovNewBest">NEW BEST</div>
+  <div id="ovUnlocks"></div>
+  <div class="rowbtns" style="max-width:340px">
+    <button id="btnRetry">Retry</button>
+    <button id="btnMenu" class="ghost">Menu</button>
+  </div>
+  <button id="btnShare" class="linkbtn hidden">Copy result</button>
+</div>
+
+<div id="boon" class="screen ui hidden">
+  <h2>ZONE CLEARED</h2>
+  <div class="sub" id="boonSub">Choose one for this dive</div>
+  <div id="boonList" class="boonList"></div>
+</div>
+
+<div id="toast"></div>
+<div id="safeProbe" aria-hidden="true"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================ CONFIG ============================ */
+const CONFIG = {
+  LANES: 3,
+  TOP_Y: 70,
+  REEF_MARGIN: 110,
+  PLAYER_GLIDE: 0.085,
+  BULLET_SPEED: 1.6,
+  BULLET_R: 7,
+  BULLET_GLOW_R: 9,
+  BULLET_GLOW_ALPHA: 0.7,
+  BULLET_TRAIL_LEN: 7,
+  BULLET_TRAIL_W: 2,
+  BULLET_TRAIL_ALPHA: 0.45,
+  BULLET_BODY_RX: 3,
+  BULLET_BODY_RY: 5,
+  MAX_PARTICLES: 300,
+  BASE_SHELLS: 5,
+  GATE_INTERVAL: 9,
+  GATE_INTERVAL_DEC: 1,
+  GATE_INTERVAL_MIN: 8,
+  GATE_FIRST: 6,
+  GATE_H: 34,
+  GATE_SPEED: 0.05,
+  GATE_CHARGE_BASE: 12,
+  GATE_CHARGE_PER_ZONE: 1,
+  GATE_PEARL_CHANCE: 0.30,
+  RIPE_TIME: 6,
+  ROT_CHANCE: 0.15,
+  ROT_GLOW: 2,
+  GATE_MAX_CLONES: 4,
+  CLONE_HP: 0.5,
+  GATE_WARN_RANGE: 0.12,
+  GATE_WARN_PULSE: 12,
+  GATE_WARN_ALPHA_MIN: 0.45,
+  GATE_WARN_WIDTH: 2,
+  GATE_WARN_RGB: '255,46,99',
+  GATE_BORDER_W: 1.5,
+  GATE_CLONE_PULSE: 10,
+  GLOW_MAX: 4,
+  GLOW_DRAIN_BASE: 0.015,
+  GLOW_DRAIN_PER: 0.02,
+  ZONE1_DRAIN_MUL: 0.7,
+  GLOW_GRACE: 2,
+  LEAK_GLOW: 0.35,
+  GLOW_OVERFLOW_SCORE: 250,
+  GLOW_TIER_RATE: 1.35,
+  GLOW_FULL_EVERY: 3,
+  SHADE_DRAIN: 1,
+  SHADE_RANGE: 0.25,
+  POLYP_RATE_MUL: 0.7,
+  FROST_SLOW: 0.5,
+  FROST_BOSS_SLOW: 0.25,
+  STORM_DMG: 2,
+  DEEP_RANGE: 0.3,
+  PET_MAX: 2,
+  PET_RATE: 3,
+  DEEP_SCORE: 500,
+  TRAY_SLOTS: 3,
+  TRAY_SLOT_R: 30,
+  TRAY_GAP: 6,
+  CALLOUT_W: 300,
+  WAVE_INTERVAL: 5,
+  WAVE_INTERVAL_DEC: 0.5,
+  WAVE_INTERVAL_MIN: 2.5,
+  WAVE_SPACING: 0.15,
+  WAVE_SIZE_MUL: 1.4,
+  ZONE1_WAVE_MUL: 0.75,
+  WAVE_SIZE_BASE: 3,
+  WAVE_SIZE_TZONE_STEP: 20,
+  KRILL_CLUSTER: 4,
+  KRILL_CLUSTER_GAP: 6,
+  ZONE_DURATION: 60,
+  HP_SCALE: 0.6,
+  LEAK_BURST_RANGE: 0.22,
+  LEAK_BURST_DMG: 6,
+  MAELSTROM_HP: 45,
+  ANGLER_HP: 160,
+  MAELSTROM_SPEED: 0.03,
+  ANGLER_SPEED: 0.025,
+  DPR_CAP: 1.5,
+  MASTER_GAIN: 0.5,
+  TOAST_ABOVE_REEF: 150,
+  LANE_TINT_ALPHA: 0.04,
+  LANE_TINT_ALT_ALPHA: 0.015,
+  LANE_TINT_RGB: '190,240,255',
+  LANE_TINT_ALT_RGB: '120,200,230',
+  LANE_PLAYER_TINT_ALPHA: 0.06,
+  LANE_PLAYER_TINT_RGB: '79,240,224'
+};
+
+const VENT_DEFS = {
+  lantern: { name:'Lantern', role:'The Keeper', desc:'Fast stream. The Glow vent: Glow never fades below I and reaches Full Bloom (IV).', cond:'default', glowMax:4, fireRate:10, dmg:1, pierce:0, bullets:1, spread:0 },
+  needle: { name:'Needle', role:'The Hunter', desc:'Heavy piercing shots. Glow caps at II. No Glow gates: every gate holds a pearl, and big kills feed Glow.', cond:'reach zone 2', glowMax:2, fireRate:3.2, dmg:2.75, pierce:1, bullets:1, spread:0 },
+  spore: { name:'Spore', role:'The Gardener', desc:'3-shot fan. Glow caps at III. Every 5th kill plants a sentry in that lane.', cond:'claim 6 gates in one run', glowMax:3, fireRate:4.3, dmg:1, pierce:0, bullets:3, spread:13 },
+  tidecaller: { name:'Tidecaller', role:'The Tide', desc:'The tide turns every 10 s. Ebb: creatures slow, gates charge double, Glow holds. Flood: creatures rush, you fire faster, Glow drains fast.', cond:'beat 2 bosses in one run', glowMax:4, fireRate:8.5, dmg:1, pierce:0, bullets:1, spread:0, slow:0.2 }
+};
+
+const ENEMY_TYPES = {
+  drifter:  { hp:4,  speed:0.085, r:17.5,  leak:1, score:10, behavior:'straight', glow:'255,106,61' },
+  krill:    { hp:1,  speed:0.12,  r:8.75,  leak:1, score:3,  behavior:'wiggle',   glow:'255,180,110' },
+  darter:   { hp:2,  speed:0.20,  r:12.5,  leak:1, score:15, behavior:'dash',     glow:'255,120,90' },
+  bulwark:  { hp:36, speed:0.045, r:27.5,  leak:2, score:60, behavior:'straight', glow:'255,140,60' },
+  splitter: { hp:8,  speed:0.07,  r:20,    leak:1, score:30, behavior:'splitter', glow:'255,90,150' },
+  shade:    { hp:4,  speed:0.10,  r:13,    leak:1, score:25, behavior:'straight', glow:'121,40,202' }
+};
+
+const GLOW_TIERS = [
+  null,
+  { name:'Rapid',     roman:'I' },
+  { name:'Twin shot', roman:'II' },
+  { name:'Piercing',  roman:'III' },
+  { name:'Full Bloom',roman:'IV' }
+];
+
+const PEARLS = {
+  polyp:    { name:'Polyp',    col:'#8FF7D2', lv:[15,20,25],       desc:'Plants a sentry in your lane for 15 s (II: 20 s and faster, III: 25 s).' },
+  frost:    { name:'Frost',    col:'#A9ECFF', lv:[8,11,14],        desc:'All enemies slowed for 8 s (II: 11 s, III: 14 s). Bosses resist a little.' },
+  undertow: { name:'Undertow', col:'#FF9E7A', lv:[0.35,0.45,0.55], desc:'Pushes every non-boss enemy back up the lane (further at II and III).' },
+  storm:    { name:'Storm',    col:'#7FE9FF', lv:[8,11,14],        desc:'For 8 s, every kill arcs into a nearby lane (II: 11 s, III: 14 s, harder hits).' },
+  ink:      { name:'Ink',      col:'#9A6BFF', lv:[10,15,20],       desc:'Inks every enemy in your lane for heavy damage (x1.5 at II, x2 at III).' },
+  mend:     { name:'Mend',     col:'#FFC9DE', lv:[2,3,5],          desc:'Restores two shells (II: three, III: all).' }
+};
+const PEARL_KEYS = ['polyp','frost','undertow','storm','ink','mend'];
+
+// Daily dive: the date picks two of these for everyone; they change how the run plays.
+const DAILY_MODS = {
+  blacktide: { name:'Black Tide',   desc:'No Glow gates. Every gate holds a pearl.' },
+  brood:     { name:'Brood Day',    desc:'Gates ripen twice as fast.' },
+  cracked:   { name:'Cracked Reef', desc:'Start with 3 shells. Bosses mend 2.' },
+  krill:     { name:'Krill Tide',   desc:'Krill swarms everywhere, no Bulwarks.' },
+  rot:       { name:'Rot Bloom',    desc:'Rotten gates from zone 1, three times as common.' },
+  riptide:   { name:'Riptide',      desc:'Creatures 20% faster. Glow fades slower.' },
+  heavy:     { name:'Heavy Water',  desc:'Creatures 30% tougher. Gates charge 50% faster.' },
+  armed:     { name:'Armed Dive',   desc:'Start with Storm, Ink and Frost pearls.' }
+};
+const MEDALS = [ { zone:7, name:'Gold' }, { zone:5, name:'Silver' }, { zone:3, name:'Bronze' } ];
+
+// Boss rewards: pick one of three after each boss, for the current run only. Each levels up to
+// `max` when picked again; fx(n) is its total effect at level n. Rare ones need a zone without leaks.
+const BOONS = {
+  keen:   { name:'Keen shots',    max:3, lab:'Damage',               v:function(n){ return '+' + 25*n + '%'; } },
+  quick:  { name:'Quick vent',    max:3, lab:'Fire rate',            v:function(n){ return '+' + 20*n + '%'; } },
+  pierce: { name:'Needlepoint',   max:2, lab:'Extra creatures pierced', v:function(n){ return '+' + n; } },
+  steady: { name:'Steady glow',   max:3, lab:'Glow fades slower',    v:function(n){ return Math.round((1 - Math.pow(0.65, n))*100) + '%'; } },
+  gates:  { name:'Open gates',    max:3, lab:'Gate charge speed',    v:function(n){ return '+' + 40*n + '%'; } },
+  burst:  { name:'Coral reef',    max:2, lab:'Reef burst reach',     v:function(n){ return (1 + n) + 'x'; } },
+  side:   { name:'Side vents',    max:3, lab:'Shots into both other lanes', v:function(n){ return 'every ' + ['','4th','3rd','2nd'][n] + ' volley'; } },
+  mend:   { name:'Mend the reef', max:99, once:true, fx:function(){ return 'refill all shells now'; } },
+  bright: { name:'Brighter vent', max:1, rare:true, fx:function(){ return 'your Glow can reach one tier higher'; } },
+  hatch:  { name:'Hatchling',     max:99, rare:true, once:true, fx:function(){ return 'a hatchling joins you now'; } },
+  bloom:  { name:'Early bloom',   max:1, rare:true, fx:function(){ return 'new gates start one dot riper'; } }
+};
+
+const GUIDE_ENTRIES = [
+  { sec:'Enemies', id:'enemy:drifter',  name:'Drifter',  text:'Slow and steady. Don\u2019t let it reach the reef.' },
+  { sec:'Enemies', id:'enemy:krill',    name:'Krill',    text:'Weak, but they come in swarms.' },
+  { sec:'Enemies', id:'enemy:darter',   name:'Darter',   text:'Fast, and it jumps lanes.' },
+  { sec:'Enemies', id:'enemy:bulwark',  name:'Bulwark',  text:'Armoured. Costs 2 shells if it gets through.' },
+  { sec:'Enemies', id:'enemy:splitter', name:'Splitter', text:'Bursts into krill when killed.' },
+  { sec:'Enemies', id:'enemy:shade',    name:'Shade',    text:'Drains your Glow when it gets close.' },
+  { sec:'Bosses',  id:'boss:maelstrom', name:'Maelstrom', text:'Three heads share one health bar. Break all three.' },
+  { sec:'Bosses',  id:'boss:angler',    name:'Angler King', text:'It shifts lanes before it strikes. Watch the red lure.' },
+  { sec:'Gates',   id:'gate:glow',      name:'Glow gate', text:'Shoot it to power up your shots. Glow fades over time.' },
+  { sec:'Gates',   id:'gate:pearl',     name:'Pearl gate', text:'Shoot it to store a pearl. Tap the pearl below to use it.' },
+  { sec:'Gates',   id:'gate:ripe',      name:'Ripe gate', text:'Gates ripen while they drift (the dots). Ripe Glow gates give more Glow, ripe pearls are level II or III. Creatures passing through eat a dot first, then get copied.' },
+  { sec:'Gates',   id:'gate:deep',      name:'Deep claim', text:'Claim a fully ripe gate (3 dots) below the deep line and it hatches a hatchling that shoots beside you. Up to 2. Each leak scares one away.' },
+  { sec:'Pearls',  id:'tray:full',      name:'Tray full', text:'With all three slots taken, a new pearl is lost. A pearl you already hold levels up instead (up to III).' },
+  { sec:'Gates',   id:'gate:rot',       name:'Rotten gate', text:'Worth +2 Glow, but the creatures caged inside break free when you claim it. Leave it alone and nothing happens.' },
+  { sec:'Pearls',  id:'pearl:polyp',    name:'Polyp',    text:PEARLS.polyp.desc },
+  { sec:'Pearls',  id:'pearl:frost',    name:'Frost',    text:PEARLS.frost.desc },
+  { sec:'Pearls',  id:'pearl:undertow', name:'Undertow', text:PEARLS.undertow.desc },
+  { sec:'Pearls',  id:'pearl:storm',    name:'Storm',    text:PEARLS.storm.desc },
+  { sec:'Pearls',  id:'pearl:ink',      name:'Ink',      text:PEARLS.ink.desc },
+  { sec:'Pearls',  id:'pearl:mend',     name:'Mend',     text:PEARLS.mend.desc }
+];
+const GUIDE_BY_ID = {};
+for (let i=0;i<GUIDE_ENTRIES.length;i++) GUIDE_BY_ID[GUIDE_ENTRIES[i].id] = GUIDE_ENTRIES[i];
+
+const BOT = (typeof location !== 'undefined' && location.hash === '#bot');
+const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/* ============================ UTILS ============================ */
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hashStr(s){ let h = 2166136261; for (let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function todayStr(){ const d = new Date(); const m = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0'); return d.getFullYear()+'-'+m+'-'+dd; }
+function mixArr(a,b,t){ return a.map((v,i)=>Math.round(v+(b[i]-v)*t)); }
+
+/* ============================ DOM ============================ */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const $ = function(id){ return document.getElementById(id); };
+const hudEl = $('hud'), hScoreEl = $('hScore'), hDepthEl = $('hDepth');
+const zoneFillEl = $('zoneFill'), bossbarEl = $('bossbar'), bossfillEl = $('bossfill');
+const titleEl = $('title'), pauseEl = $('pause'), overEl = $('over'), guideEl = $('guide'), introEl = $('intro'), boonEl = $('boon');
+const toastEl = $('toast');
+
+/* ============================ AUDIO ============================ */
+const Audio_ = {
+  ctx:null, master:null, muted:false, lastShot:0,
+  ensure:function(){
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try { this.ctx = new AC(); } catch(e){ this.ctx = null; return; }
+    this.master = this.ctx.createGain();
+    this.master.gain.value = this.muted ? 0 : CONFIG.MASTER_GAIN;
+    this.master.connect(this.ctx.destination);
+    this.startDrone();
+  },
+  // The audio thread only runs during play with sound on; menus and mute suspend it to save battery.
+  resume:function(){ if (state.screen === 'playing' && !this.muted && this.ctx && this.ctx.state === 'suspended') { try { this.ctx.resume(); } catch(e){} } },
+  pause:function(){
+    const self = this;
+    setTimeout(function(){ if ((state.screen !== 'playing' || self.muted) && self.ctx && self.ctx.state === 'running'){ try { self.ctx.suspend(); } catch(e){} } }, 1500);
+  },
+  setMuted:function(m){ this.muted = !!m; if (this.master) this.master.gain.value = m ? 0 : CONFIG.MASTER_GAIN; if (m) this.pause(); else this.resume(); },
+  startDrone:function(){
+    if (!this.ctx) return;
+    const o = this.ctx.createOscillator(); o.type='sine'; o.frequency.value=55;
+    const o2 = this.ctx.createOscillator(); o2.type='sine'; o2.frequency.value=82.5;
+    const f = this.ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=180;
+    const g = this.ctx.createGain(); g.gain.value=0.05;
+    o.connect(f); o2.connect(f); f.connect(g); g.connect(this.master);
+    o.start(); o2.start();
+  },
+  tone:function(freq,dur,type,vol,slideTo,delay){
+    if (!this.ctx || this.muted) return;
+    const t0 = this.ctx.currentTime + (delay||0);
+    const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(1,slideTo), t0+dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0001,vol), t0+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    o.connect(g); g.connect(this.master); o.start(t0); o.stop(t0+dur+0.03);
+  },
+  noise:function(dur,vol,fFrom,fTo,delay){
+    if (!this.ctx || this.muted) return;
+    const t0 = this.ctx.currentTime + (delay||0);
+    const n = Math.max(1, Math.floor(this.ctx.sampleRate*dur));
+    const buf = this.ctx.createBuffer(1,n,this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i=0;i<n;i++) d[i] = Math.random()*2-1;
+    const src = this.ctx.createBufferSource(); src.buffer = buf;
+    const f = this.ctx.createBiquadFilter(); f.type='lowpass';
+    f.frequency.setValueAtTime(Math.max(20,fFrom), t0);
+    if (fTo) f.frequency.exponentialRampToValueAtTime(Math.max(20,fTo), t0+dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    src.connect(f); f.connect(g); g.connect(this.master); src.start(t0); src.stop(t0+dur);
+  },
+  shot:function(){ const t=performance.now(); if (t-this.lastShot < 55) return; this.lastShot=t; this.tone(900,0.04,'triangle',0.028,600); },
+  hit:function(){ this.tone(320,0.05,'square',0.04,220); },
+  kill:function(){ this.tone(680,0.12,'sine',0.07,990); },
+  charge:function(r){ this.tone(320+r*560,0.05,'sine',0.045); },
+  claim:function(){ this.tone(523,0.30,'sine',0.09); this.tone(659,0.30,'sine',0.08,null,0.05); this.tone(784,0.42,'sine',0.09,null,0.10); },
+  leak:function(){ this.noise(0.30,0.22,420,70); this.tone(130,0.34,'sine',0.15,55); },
+  roar:function(){ this.noise(1.1,0.28,900,110); this.tone(85,1.0,'sawtooth',0.13,48); },
+  zoneClear:function(){ [523,659,784,1047].forEach((f,i)=>this.tone(f,0.28,'sine',0.08,null,i*0.09)); },
+  gameOver:function(){ [420,330,250,170].forEach((f,i)=>this.tone(f,0.42,'sine',0.10,null,i*0.22)); }
+};
+
+/* ============================ STATE ============================ */
+const state = {
+  screen:'title',
+  rng:mulberry32(1), seed:1, daily:false,
+  W:0,H:0,dpr:1, topY:CONFIG.TOP_Y, reefY:0, playH:1,
+  time:0,
+  player:{ lane:1, x:0, shells:CONFIG.BASE_SHELLS },
+  enemies:[], bullets:[], gates:[], particles:[], sentries:[], arcs:[],
+  spawnQueue:[], deathQueue:[],
+  nextId:1,
+  score:0, kills:0, gatesClaimed:0, clones:0, bossesKilled:0,
+  zone:1, tZone:0, phase:'waves',
+  waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, mods:[], vent:'lantern', gardenKills:0, flood:false,
+  glow:0, glowTier:0, glowGraceUntil:0, glowToastAt:-99, pearls:[null,null,null],
+  frostUntil:0, stormUntil:0, frostMax:1, stormMax:1, stormLv:1, pearlLv:[0,0,0], pets:0, petCd:0, gateRetry:0,
+  volleyIndex:0, fireCd:0,
+  shake:0, laneFlash:[0,0,0], dangerFlash:0,
+  toasts:[], banner:null, nameFlash:null,
+  callout:null, calloutQueue:[], ripples:[],
+  layout:{ safeB:0, shellY:0, shellGap:26, trayCx:[0,0,0], trayCy:0, trayR:CONFIG.TRAY_SLOT_R, glowX:14, glowY:0, glowW:160 },
+  ambience:[],
+  stats:{ fireRate:VENT_DEFS.lantern.fireRate, damage:1, pierce:0, bullets:1, spread:0, slow:0, gateChargeMul:1 }
+};
+const save = { best:0, bestBy:{}, depthBy:{}, bestDaily:{ date:'', score:0 }, unlocked:['lantern'], vent:'lantern', muted:false, seen:[], stats:{ runs:0, kills:0, bestDepth:0 } };
+
+function loadSave(){
+  try {
+    const raw = localStorage.getItem('glowtide.v1');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d && typeof d === 'object'){
+      if (typeof d.best === 'number') save.best = d.best;
+      if (d.bestDaily && typeof d.bestDaily === 'object') save.bestDaily = { date:d.bestDaily.date||'', score:d.bestDaily.score||0 };
+      if (Array.isArray(d.unlocked)) save.unlocked = d.unlocked.filter(function(k){ return VENT_DEFS[k]; });
+      if (typeof d.vent === 'string' && VENT_DEFS[d.vent]) save.vent = d.vent;
+      if (typeof d.muted === 'boolean') save.muted = d.muted;
+      if (Array.isArray(d.seen)) save.seen = d.seen.filter(function(s){ return typeof s === 'string'; });
+      if (d.stats && typeof d.stats === 'object') save.stats = Object.assign(save.stats, d.stats);
+      if (d.bestBy && typeof d.bestBy === 'object') save.bestBy = d.bestBy;
+      if (d.depthBy && typeof d.depthBy === 'object') save.depthBy = d.depthBy;
+      if (!d.bestBy && save.best > 0) save.bestBy = { lantern: save.best }; // before v3.1 there was one shared best
+    }
+  } catch(e){}
+  if (save.unlocked.indexOf('lantern')<0) save.unlocked.push('lantern');
+}
+function persist(){
+  try { localStorage.setItem('glowtide.v1', JSON.stringify(save)); } catch(e){}
+}
+
+/* ============================ SPRITES ============================ */
+const spriteCache = {};
+function glowSprite(rgb, radius){
+  const r = Math.max(4, Math.round(radius));
+  const key = rgb + '_' + r;
+  let c = spriteCache[key];
+  if (c) return c;
+  const S = r*4;
+  c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+  grd.addColorStop(0, 'rgba('+rgb+',0.85)');
+  grd.addColorStop(0.35, 'rgba('+rgb+',0.32)');
+  grd.addColorStop(1, 'rgba('+rgb+',0)');
+  g.fillStyle = grd; g.fillRect(0,0,S,S);
+  spriteCache[key] = c;
+  return c;
+}
+function drawGlow(rgb, x, y, radius, alpha){
+  const s = glowSprite(rgb, radius);
+  ctx.globalAlpha = alpha==null?1:alpha;
+  ctx.drawImage(s, x - s.width/2, y - s.height/2, s.width, s.height);
+  ctx.globalAlpha = 1;
+}
+
+/* ============================ AMBIENCE ============================ */
+function initAmbience(){
+  state.ambience.length = 0;
+  for (let i=0;i<46;i++){
+    state.ambience.push({
+      x: state.rng()*state.W,
+      y: state.rng()*state.H,
+      r: state.rng()<0.5 ? 0.8+state.rng()*1.6 : 1.6+state.rng()*3.2,
+      sp: 8 + state.rng()*26,
+      a: 0.15 + state.rng()*0.4,
+      drift: (state.rng()-0.5)*10,
+      phase: state.rng()*Math.PI*2,
+      snow: state.rng()<0.55
+    });
+  }
+}
+function updateAmbience(dt){
+  for (let i=0;i<state.ambience.length;i++){
+    const a = state.ambience[i];
+    a.y -= a.sp*dt;
+    a.x += Math.sin(state.time*0.5 + a.phase)*a.drift*dt;
+    if (a.y < -10){ a.y = state.H+10; a.x = state.rng()*state.W; }
+  }
+}
+function drawAmbience(){
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i=0;i<state.ambience.length;i++){
+    const a = state.ambience[i];
+    if (a.snow){
+      ctx.globalAlpha = a.a*0.5;
+      ctx.fillStyle = '#8FD6EA';
+      ctx.beginPath(); ctx.arc(a.x,a.y,a.r*0.6,0,6.2832); ctx.fill();
+    } else {
+      ctx.globalAlpha = a.a*0.35;
+      ctx.strokeStyle = '#57C7E8';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(a.x,a.y,a.r*2.4,0,6.2832); ctx.stroke();
+      ctx.globalAlpha = a.a*0.6;
+      ctx.fillStyle = '#BFF3FF';
+      ctx.beginPath(); ctx.arc(a.x,a.y,a.r,0,6.2832); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+/* ============================ CANVAS / GEOMETRY ============================ */
+function laneX(i){ return state.W*(i+0.5)/CONFIG.LANES; }
+function laneW(){ return state.W/CONFIG.LANES; }
+let bgGrad = null, bgZone = 0;
+function bgColors(zone){
+  const t = Math.min(0.85, (zone-1)*0.14);
+  const top = mixArr([4,18,31],[3,7,26], t);
+  const bot = mixArr([10,37,64],[18,20,74], t);
+  return ['rgb('+top.join(',')+')', 'rgb('+bot.join(',')+')'];
+}
+function buildBg(){
+  const c = bgColors(state.zone);
+  bgGrad = ctx.createLinearGradient(0,0,0,state.H);
+  bgGrad.addColorStop(0,c[0]); bgGrad.addColorStop(1,c[1]);
+  bgZone = state.zone;
+}
+function rr(x,y,w,h,r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function resize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  const dpr = Math.min(CONFIG.DPR_CAP, window.devicePixelRatio||1);
+  canvas.width = Math.max(1,Math.floor(w*dpr));
+  canvas.height = Math.max(1,Math.floor(h*dpr));
+  canvas.style.width = w+'px'; canvas.style.height = h+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  state.W = w; state.H = h; state.dpr = dpr;
+  state.topY = CONFIG.TOP_Y;
+  state.reefY = h - CONFIG.REEF_MARGIN;
+  state.playH = Math.max(120, state.reefY - state.topY);
+  toastEl.style.top = (state.reefY - CONFIG.TOAST_ABOVE_REEF) + 'px';
+  computeLayout();
+  buildBg();
+  state.player.x = laneX(state.player.lane);
+  initAmbience();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', function(){ setTimeout(resize, 120); });
+
+/* Bottom bar: shells on the left, pearl tray on the right, glow meter above them. */
+function computeLayout(){
+  const probe = $('safeProbe');
+  let safeB = 0;
+  if (probe){
+    try { safeB = probe.getBoundingClientRect().height || 0; } catch(e){ safeB = 0; }
+  }
+  if (!isFinite(safeB) || safeB < 0) safeB = 0;
+  const L = state.layout;
+  L.safeB = safeB;
+  const base = state.H - safeB - 10;
+  const R = CONFIG.TRAY_SLOT_R;
+  const gap = CONFIG.TRAY_GAP;
+  const trayW = CONFIG.TRAY_SLOTS*R*2 + (CONFIG.TRAY_SLOTS-1)*gap;
+  const trayLeft = Math.max(60, state.W - 12 - trayW);
+  L.trayR = R;
+  L.trayCy = base - R;
+  for (let i=0;i<CONFIG.TRAY_SLOTS;i++) L.trayCx[i] = trayLeft + R + i*(R*2+gap);
+  const shellRight = trayLeft - 18;
+  L.shellY = L.trayCy - 2;
+  L.shellGap = clamp((shellRight - 28)/Math.max(1, CONFIG.BASE_SHELLS-1), 16, 26);
+  L.shellStart = 26;
+  L.glowX = 14;
+  L.glowY = L.shellY - 30;
+  L.glowW = Math.max(70, Math.min(190, shellRight - 14));
+}
+
+/* ============================ SAVE / UI HELPERS ============================ */
+function toast(text, col, dim){
+  // The same message again just stays up longer; at most two messages show at once.
+  for (let i=0;i<state.toasts.length;i++){ if (state.toasts[i].el.textContent === text){ state.toasts[i].t = 1.2; return; } }
+  const d = document.createElement('div');
+  d.className = 'msg' + (dim ? ' dim' : '');
+  d.textContent = text;
+  if (col) d.style.borderColor = col;
+  toastEl.appendChild(d);
+  state.toasts.push({ el:d, t:1.2 });
+  if (dim) Audio_.tone(340,0.20,'sine',0.04,240);
+  else Audio_.claim();
+  while (state.toasts.length > 2){ const o = state.toasts.shift(); if (o.el.parentNode) o.el.parentNode.removeChild(o.el); }
+}
+function updateToasts(dt){
+  for (let i=state.toasts.length-1;i>=0;i--){
+    const t = state.toasts[i];
+    t.t -= dt;
+    t.el.style.opacity = String(clamp(t.t/0.4,0,1) * (t.el.className.indexOf('dim')>=0 ? 0.7 : 1));
+    if (t.t <= 0){ if (t.el.parentNode) t.el.parentNode.removeChild(t.el); state.toasts.splice(i,1); }
+  }
+  if (state.banner){ state.banner.t -= dt; if (state.banner.t<=0) state.banner=null; }
+}
+
+/* ============================ CALLOUTS ============================ */
+function markSeen(id){
+  if (BOT) return false;
+  if (save.seen.indexOf(id) >= 0) return false;
+  save.seen.push(id);
+  persist();
+  return true;
+}
+function triggerCallout(id, title, text, x, y){
+  if (BOT) return;
+  if (!markSeen(id)) return;
+  const c = { id:id, title:title, text:text, x:x, y:y, born:performance.now() };
+  gesture = null; // an in-flight swipe must not survive the pause
+  if (state.callout) state.calloutQueue.push(c);
+  else state.callout = c;
+}
+function triggerGuide(id, x, y){
+  const g = GUIDE_BY_ID[id];
+  if (g) triggerCallout(id, g.name, g.text, x, y);
+}
+// Callouts stay up until the player taps (or presses Space/Enter). The game is
+// fully paused meanwhile, so dismissing one just advances the queue.
+function dismissCallout(){
+  state.callout = state.calloutQueue.length ? state.calloutQueue.shift() : null;
+  if (state.callout) state.callout.born = performance.now();
+  gesture = null;
+  last = performance.now();
+}
+
+/* ============================ RUN CONTROL ============================ */
+function resetRun(daily){
+  state.daily = !!daily;
+  if (daily){
+    state.seed = hashStr(todayStr());
+  } else {
+    state.seed = (Date.now() ^ (Math.random()*0xffffffff)) >>> 0;
+  }
+  state.rng = mulberry32(state.seed);
+  state.time = 0;
+  state.mods = daily ? dailyMods() : [];
+  state.vent = VENT_DEFS[save.vent] ? save.vent : 'lantern';
+  state.gardenKills = 0; state.flood = false;
+  state.player = { lane:1, x:laneX(1), shells: mod('cracked') ? 3 : CONFIG.BASE_SHELLS };
+  state.enemies.length = 0; state.bullets.length = 0; state.gates.length = 0;
+  state.particles.length = 0; state.sentries.length = 0; state.arcs.length = 0;
+  state.spawnQueue.length = 0; state.deathQueue.length = 0;
+  state.nextId = 1;
+  state.score = 0; state.kills = 0; state.gatesClaimed = 0; state.clones = 0; state.bossesKilled = 0;
+  state.zone = 1; state.tZone = 0; state.phase = 'waves';
+  state.waveTimer = 2.0; state.gateTimer = CONFIG.GATE_FIRST;
+  state.lastWaveLanes.length = 0; state.boss = null; state.advanceTimer = 0; state.boons = {}; state.zoneLeaks = 0;
+  state.glow = 0; state.glowTier = 0; state.glowGraceUntil = 0; state.glowToastAt = -99;
+  state.pearls = mod('armed') ? ['storm','ink','frost'] : [null,null,null];
+  state.frostUntil = 0; state.stormUntil = 0; state.stormLv = 1; state.pets = 0; state.petCd = 0; state.gateRetry = 0;
+  state.pearlLv = [1,1,1];
+  state.volleyIndex = 0; state.fireCd = 0;
+  state.shake = 0; state.laneFlash = [0,0,0]; state.dangerFlash = 0;
+  state.toasts.length = 0; state.banner = null; state.nameFlash = null;
+  state.callout = null; state.calloutQueue.length = 0; state.ripples.length = 0;
+  toastEl.innerHTML = '';
+  recalcStats();
+  buildBg();
+  state.banner = { text:'ZONE 1', t:1.8, max:1.8 };
+  if (state.mods.length) toast('Daily · ' + state.mods.map(function(k){ return DAILY_MODS[k].name; }).join(' + '));
+  for (let i=0;i<state.pearls.length;i++) if (state.pearls[i]) triggerGuide('pearl:'+state.pearls[i], state.layout.trayCx[i], state.layout.trayCy);
+}
+function mod(k){ return state.mods.indexOf(k) >= 0; }
+function dailyMods(){
+  const r = mulberry32(hashStr('mods' + todayStr()));
+  const keys = Object.keys(DAILY_MODS), out = [];
+  while (out.length < 2) out.push(keys.splice(Math.floor(r()*keys.length),1)[0]);
+  return out;
+}
+// Tidecaller: ebb for 10 s, then flood for 10 s.
+function tideSpeed(){ return state.vent !== 'tidecaller' ? 1 : (state.flood ? 1.2 : 0.75); }
+function startRun(daily){
+  Audio_.ensure(); Audio_.resume();
+  resetRun(daily);
+  state.screen = 'playing';
+  showScreen('playing');
+  last = performance.now();
+}
+function recalcStats(){
+  const v = VENT_DEFS[state.vent];
+  const s = state.stats;
+  const tier = Math.floor(state.glow);
+  s.fireRate = v.fireRate * (tier >= 1 ? CONFIG.GLOW_TIER_RATE : 1);
+  s.damage = v.dmg;
+  s.pierce = v.pierce + (tier >= 3 ? 1 : 0);
+  s.bullets = v.bullets + (tier >= 2 ? 1 : 0);
+  s.spread = v.spread || 0;
+  s.slow = v.slow || 0;
+  s.gateChargeMul = (1 + 0.4*boon('gates')) * (mod('heavy') ? 1.5 : 1) * (state.vent === 'tidecaller' && !state.flood ? 2 : 1);
+  if (state.vent === 'tidecaller' && state.flood) s.fireRate *= 1.3;
+  s.fireRate *= 1 + 0.2*boon('quick');
+  s.damage *= 1 + 0.25*boon('keen');
+  s.pierce += boon('pierce');
+}
+function boon(k){ return state.boons[k] || 0; }
+function glowCap(){ return Math.min(CONFIG.GLOW_MAX, VENT_DEFS[state.vent].glowMax + boon('bright')); }
+function boonOk(k){
+  if (boon(k) >= BOONS[k].max) return false;
+  if (k === 'mend') return state.player.shells < CONFIG.BASE_SHELLS-1;
+  if (k === 'bright') return glowCap() < CONFIG.GLOW_MAX;
+  if (k === 'hatch') return state.pets < CONFIG.PET_MAX;
+  return true;
+}
+function offerBoons(){
+  const keys = Object.keys(BOONS).filter(boonOk);
+  const common = keys.filter(function(k){ return !BOONS[k].rare; });
+  const rare = keys.filter(function(k){ return BOONS[k].rare; });
+  const take = function(a){ return a.splice(Math.floor(state.rng()*a.length),1)[0]; };
+  const pick = [];
+  let note = 'Clear a zone without leaks to get a rare reward';
+  if (state.zoneLeaks === 0 && rare.length){ pick.push(take(rare)); note = 'Flawless zone: one rare reward'; }
+  else if ((state.zoneLeaks >= 3 || state.player.shells <= 2) && common.indexOf('mend') >= 0){
+    pick.push(common.splice(common.indexOf('mend'),1)[0]); note = 'Rough zone: mending is on offer';
+  }
+  while (pick.length < 3 && common.length) pick.push(take(common));
+  if (BOT){ takeBoon(pick[0]); return; }
+  $('boonSub').textContent = note;
+  const list = $('boonList');
+  list.innerHTML = '';
+  pick.forEach(function(k){
+    const B = BOONS[k], n = boon(k);
+    const chip = B.rare ? 'Rare' : (B.once ? '' : (n ? 'Level ' + (n+1) + ' of ' + B.max : 'New'));
+    const fx1 = B.fx ? B.fx() : '';
+    const desc = B.v ? B.lab + ' ' + (n ? B.v(n) + ' \u2192 ' : '') + '<b>' + B.v(n + 1) + '</b>' : fx1.charAt(0).toUpperCase() + fx1.slice(1);
+    const b = document.createElement('button');
+    b.className = 'bcard' + (B.rare ? ' rare' : '');
+    b.innerHTML = '<div class="vname">' + B.name + (chip ? '<span class="chip">' + chip + '</span>' : '') + '</div><div class="vdesc">' + desc + '</div>';
+    b.addEventListener('click', function(){ takeBoon(k); });
+    list.appendChild(b);
+  });
+  state.screen = 'boon';
+  showScreen('boon');
+}
+function takeBoon(k){
+  if (!BOT && state.screen !== 'boon') return; // a double tap must not skip a zone
+  state.boons[k] = boon(k) + 1;
+  if (k === 'mend') state.player.shells = CONFIG.BASE_SHELLS;
+  if (k === 'hatch') state.pets = Math.min(CONFIG.PET_MAX, state.pets + 1);
+  recalcStats();
+  state.screen = 'playing';
+  showScreen('playing');
+  last = performance.now();
+  nextZone();
+}
+function ventBaseRate(){
+  const v = VENT_DEFS[state.vent];
+  return v.fireRate;
+}
+function setGlow(v){
+  const oldTier = state.glowTier;
+  state.glow = clamp(v, 0, glowCap());
+  const tier = Math.floor(state.glow);
+  state.glowTier = tier;
+  if (tier !== oldTier){
+    recalcStats();
+    onGlowTier(oldTier, tier);
+  }
+}
+function onGlowTier(oldTier, tier){
+  // Glow often hovers at a tier edge (small gains, steady drain): announce changes at most every 4 s.
+  const quiet = state.time - state.glowToastAt < 4;
+  if (tier > oldTier){
+    const t = GLOW_TIERS[tier];
+    if (!quiet || tier === glowCap()){ toast('Glow ' + t.roman + ' \u00b7 ' + t.name); state.glowToastAt = state.time; }
+    triggerCallout('glow:up', 'Glow', 'Your shots are stronger while Glow lasts. Claim gates to keep it up.', state.player.x, state.reefY - 34);
+  } else if (oldTier > 0){
+    if (!quiet){ toast('Glow faded \u00b7 ' + GLOW_TIERS[oldTier].name + ' lost', null, true); state.glowToastAt = state.time; }
+    triggerCallout('glow:lost', 'Glow faded', 'Claim amber gates to keep your shots strong.', state.layout.glowX + state.layout.glowW*0.5, state.layout.glowY);
+  }
+}
+function gameOver(){
+  if (state.screen === 'gameover') return;
+  state.screen = 'gameover';
+  state.callout = null;
+  state.calloutQueue.length = 0;
+  Audio_.gameOver();
+  const modeKey = state.daily ? 'daily' : state.vent;
+  const prevBest = state.daily ? (save.bestDaily.date === todayStr() ? save.bestDaily.score : 0) : (save.bestBy[state.vent] || 0);
+  const newBest = state.score > prevBest;
+  if (newBest && !state.daily) save.bestBy[state.vent] = state.score;
+  if (state.score > save.best) save.best = state.score;
+  const medal = state.daily ? (MEDALS.filter(function(m){ return state.zone >= m.zone; })[0] || null) : null;
+  if (state.daily){
+    if (save.bestDaily.date !== todayStr() || state.score > save.bestDaily.score)
+      save.bestDaily = { date:todayStr(), score:state.score, medal: medal ? medal.name : '' };
+  }
+  const depth = state.zone*100 + Math.floor(Math.min(state.tZone,99));
+  save.stats.runs++;
+  save.stats.kills += state.kills;
+  if (depth > save.stats.bestDepth) save.stats.bestDepth = depth;
+  if (!state.daily && depth > (save.depthBy[state.vent] || 0)) save.depthBy[state.vent] = depth;
+
+  const newly = [];
+  if (state.zone >= 2 && save.unlocked.indexOf('needle')<0){ save.unlocked.push('needle'); newly.push('needle'); }
+  if (state.gatesClaimed >= 6 && save.unlocked.indexOf('spore')<0){ save.unlocked.push('spore'); newly.push('spore'); }
+  if (state.bossesKilled >= 2 && save.unlocked.indexOf('tidecaller')<0){ save.unlocked.push('tidecaller'); newly.push('tidecaller'); }
+  persist();
+
+  $('ovScore').textContent = String(state.score);
+  $('ovDepth').textContent = depth+'m';
+  $('ovKills').textContent = String(state.kills);
+  $('ovGates').textContent = String(state.gatesClaimed);
+  $('ovBest').textContent = String(Math.max(prevBest, state.score));
+  $('ovBestLbl').textContent = state.daily ? "Today's best" : 'Best with ' + VENT_DEFS[modeKey].name;
+  $('ovNewBest').classList.toggle('hidden', !newBest);
+  $('ovSub').textContent = state.daily ? ('Daily '+todayStr() + (medal ? ' · ' + medal.name + ' medal' : '')) : 'The dark closed in';
+  shareText = 'Glowtide daily ' + todayStr() + ' · ' + state.mods.map(function(k){ return DAILY_MODS[k].name; }).join(' + ') +
+    ' · zone ' + state.zone + ' · ' + state.score + (medal ? ' · ' + medal.name : '');
+  $('btnShare').classList.toggle('hidden', !state.daily);
+  $('btnShare').textContent = 'Copy result';
+  const ul = $('ovUnlocks');
+  ul.innerHTML = '';
+  for (let i=0;i<newly.length;i++){
+    const d = document.createElement('div');
+    d.className = 'unlock';
+    d.textContent = 'Unlocked: ' + VENT_DEFS[newly[i]].name;
+    ul.appendChild(d);
+  }
+  updateTitleExtras();
+  showScreen('gameover');
+}
+function nextZone(){
+  state.zone++;
+  state.zoneLeaks = 0;
+  state.player.shells = Math.min(CONFIG.BASE_SHELLS, state.player.shells + (mod('cracked') ? 2 : 1));
+  state.phase = 'waves';
+  state.tZone = 0;
+  state.waveTimer = 1.6;
+  state.gateTimer = 3;
+  state.lastWaveLanes.length = 0;
+  state.boss = null;
+  state.banner = { text:'ZONE '+state.zone, t:2.0, max:2.0 };
+  buildBg();
+  Audio_.zoneClear();
+}
+
+/* ============================ SPAWNING ============================ */
+function newEnemy(type, lane, y, opts){
+  opts = opts || {};
+  const t = ENEMY_TYPES[type];
+  const hm = hpMul();
+  const hp = Math.max(1, Math.round(t.hp*hm));
+  const e = {
+    id: state.nextId++,
+    type: type, lane: lane, x: laneX(lane), y: y, prevY: y,
+    r: t.r, hp: hp, maxHp: hp, leak: t.leak, score: t.score,
+    speed: t.speed, behavior: t.behavior, glow: t.glow,
+    dead:false, boss:false, cloneable: opts.clone!==false, processed:false,
+    slowMul:1, slowUntil:0, curSlow:1, phase: state.rng()*6.28,
+    dashStarted:false, dashT:0, dashX0:0, dashX1:0, xoff:0, drained:false
+  };
+  if (type === 'darter' && !opts.instantDash) e.dashAt = state.topY + (0.3 + 0.3*state.rng())*state.playH;
+  state.enemies.push(e);
+  triggerGuide('enemy:'+type, e.x, e.y);
+  return e;
+}
+function spawnKrillCluster(lane, y){
+  const base = laneX(lane);
+  for (let i=0;i<CONFIG.KRILL_CLUSTER;i++){
+    const e = newEnemy('krill', lane, (y==null? state.topY-8 : y) - i*CONFIG.KRILL_CLUSTER_GAP);
+    e.x = base + (state.rng()-0.5)*laneW()*0.7;
+  }
+}
+function spawnClone(src, gate){
+  const e = newEnemy(src.type, gate.lane, gate.y + CONFIG.GATE_H*0.5 + 12, { clone:false });
+  e.xoff = (state.rng()-0.5)*laneW()*0.5;
+  e.x = laneX(gate.lane) + e.xoff;
+  e.hp = Math.max(1, Math.round(src.maxHp*CONFIG.CLONE_HP));
+  e.maxHp = e.hp;
+  state.clones++;
+  return e;
+}
+function hpMul(){ return (1 + CONFIG.HP_SCALE*(state.zone-1)) * (mod('heavy') ? 1.3 : 1); }
+function waveInterval(){ return Math.max(CONFIG.WAVE_INTERVAL_MIN, CONFIG.WAVE_INTERVAL - CONFIG.WAVE_INTERVAL_DEC*(state.zone-1)); }
+function gateInterval(){ return Math.max(CONFIG.GATE_INTERVAL_MIN, CONFIG.GATE_INTERVAL - CONFIG.GATE_INTERVAL_DEC*(state.zone-1)); }
+function pickLane(){
+  const L = CONFIG.LANES;
+  let lane = Math.floor(state.rng()*L);
+  const lw = state.lastWaveLanes;
+  if (lw.length >= 2 && lw[lw.length-1] === lane && lw[lw.length-2] === lane){
+    lane = (lane + 1 + Math.floor(state.rng()*(L-1))) % L;
+  }
+  lw.push(lane); if (lw.length>4) lw.shift();
+  return lane;
+}
+function availableTypes(){
+  const t = state.tZone, z = state.zone, out = [];
+  out.push({ t:'drifter', w:3 });
+  if (t >= 15 || mod('krill')) out.push({ t:'krill', w: mod('krill') ? 6 : 2 });
+  if (t >= 30) out.push({ t:'darter', w:2 });
+  if (t >= 45 && !mod('krill')) out.push({ t:'bulwark', w:1 });
+  if (z >= 2) out.push({ t:'splitter', w:2 });
+  if (z >= 2) out.push({ t:'shade', w:1.5 });
+  return out;
+}
+function pickType(){
+  const av = availableTypes();
+  let total = 0; for (let i=0;i<av.length;i++) total += av[i].w;
+  let r = state.rng()*total;
+  for (let i=0;i<av.length;i++){ r -= av[i].w; if (r <= 0) return av[i].t; }
+  return 'drifter';
+}
+function scheduleWave(){
+  const lane = pickLane();
+  const count = Math.round((state.zone === 1 ? CONFIG.ZONE1_WAVE_MUL : 1) * CONFIG.WAVE_SIZE_MUL * (CONFIG.WAVE_SIZE_BASE + state.zone + Math.floor(state.tZone/CONFIG.WAVE_SIZE_TZONE_STEP)));
+  let bulwarks = 0;
+  for (let i=0;i<count;i++){
+    let type = pickType();
+    if (type === 'bulwark'){ if (bulwarks >= 1) type = 'drifter'; else bulwarks++; }
+    state.spawnQueue.push({ type:type, lane:lane, t:i*CONFIG.WAVE_SPACING });
+  }
+  if (state.zone >= 2 && state.rng() < 0.30){
+    let l2 = pickLane(); if (l2 === lane) l2 = (l2+1)%CONFIG.LANES;
+    const half = Math.max(1, Math.floor(count/2));
+    for (let i=0;i<half;i++){
+      state.spawnQueue.push({ type: pickType(), lane:l2, t: 0.12 + i*CONFIG.WAVE_SPACING });
+    }
+  }
+}
+function pickPearlForGate(){
+  let pool = PEARL_KEYS.slice();
+  if (state.player.shells >= CONFIG.BASE_SHELLS) pool = pool.filter(function(k){ return k !== 'mend'; });
+  const fresh = pool.filter(function(k){ return state.pearls.indexOf(k) < 0; });
+  const use = fresh.length ? fresh : pool;
+  return use[Math.floor(state.rng()*use.length)];
+}
+function spawnGate(){
+  const occupied = {};
+  for (let i=0;i<state.gates.length;i++) occupied[state.gates[i].lane] = true;
+  const free = [];
+  for (let l=0;l<CONFIG.LANES;l++) if (!occupied[l]) free.push(l);
+  if (!free.length) return;
+  // Prefer a lane with no creatures near the top, so a new gate is not eaten at once.
+  const crowd = function(l){
+    let n = 0;
+    for (let i=0;i<state.enemies.length;i++){ const e = state.enemies[i]; if (!e.dead && !e.boss && e.lane === l && e.y < state.topY + 0.35*state.playH) n++; }
+    for (let i=0;i<state.spawnQueue.length;i++) if (state.spawnQueue[i].lane === l) n++;
+    return n;
+  };
+  let best = Infinity, calm = [];
+  for (let i=0;i<free.length;i++){ const c = crowd(free[i]); if (c < best){ best = c; calm = [free[i]]; } else if (c === best) calm.push(free[i]); }
+  if (best > 0 && state.gateRetry < 4){ state.gateRetry++; state.gateTimer = 0.8; return; }
+  state.gateRetry = 0;
+  const lane = calm[Math.floor(state.rng()*calm.length)];
+  const noGlow = mod('blacktide') || state.vent === 'needle';
+  const kind = (state.zone >= 2 || mod('rot')) && state.rng() < CONFIG.ROT_CHANCE*(mod('rot') ? 3 : 1) ? 'rot'
+    : (noGlow || state.rng() < CONFIG.GATE_PEARL_CHANCE ? 'pearl' : 'glow');
+  const x = laneX(lane), y = state.topY + CONFIG.GATE_H*0.5;
+  state.gates.push({
+    id: state.nextId++, lane: lane, x: x, y: y,
+    kind: kind,
+    pearl: kind === 'pearl' ? pickPearlForGate() : null,
+    pack: kind === 'rot' ? rotPack() : null,
+    charge: 0, needed: CONFIG.GATE_CHARGE_BASE + CONFIG.GATE_CHARGE_PER_ZONE*state.zone,
+    clones: 0, age: boon('bloom') ? CONFIG.RIPE_TIME : 0, eaten: 0, dead: false
+  });
+  triggerGuide('gate:'+kind, x, y);
+}
+// Rotten gates show the creatures caged inside; claiming one sets them free.
+function rotPack(){
+  const pack = ['splitter'];
+  for (let i=0;i<1+Math.floor(state.zone/2);i++) pack.push('drifter');
+  return pack;
+}
+// Ripeness 1-3 grows with a gate's age; each creature passing through eats one level.
+function gateStage(g){
+  if (g.kind === 'rot') return 1;
+  return Math.max(1, 1 + Math.min(2, Math.floor(g.age/(CONFIG.RIPE_TIME*(mod('brood') ? 0.5 : 1)))) - g.eaten);
+}
+
+/* ============================ BOSSES ============================ */
+function startBoss(){
+  state.phase = 'boss';
+  Audio_.roar();
+  if (state.zone % 2 === 1){
+    const hm = hpMul();
+    const boss = { kind:'maelstrom', segments:[], spawnT:1.2, dead:false };
+    for (let l=0;l<CONFIG.LANES;l++){
+      const hp = Math.max(1, Math.round(CONFIG.MAELSTROM_HP*hm));
+      const e = {
+        id: state.nextId++, type:'maelstrom', lane:l, x:laneX(l), y:state.topY+40, prevY:state.topY+40,
+        r: 34, hp:hp, maxHp:hp, leak:0, score:0, speed:CONFIG.MAELSTROM_SPEED, behavior:'boss',
+        glow:'121,40,202', dead:false, boss:true, cloneable:false, processed:false, phase:l*2,
+        slowMul:1, slowUntil:0, seg:true
+      };
+      state.enemies.push(e);
+      boss.segments.push(e);
+    }
+    state.boss = boss;
+    triggerGuide('boss:maelstrom', laneX(1), state.topY+40);
+  } else {
+    const hm = hpMul();
+    const hp = Math.max(1, Math.round(CONFIG.ANGLER_HP*hm));
+    const lane = Math.floor(state.rng()*CONFIG.LANES);
+    const e = {
+      id: state.nextId++, type:'anglerking', lane:lane, x:laneX(lane), y:state.topY+30, prevY:state.topY+30,
+      r: 38, hp:hp, maxHp:hp, leak:0, score:0, speed:CONFIG.ANGLER_SPEED, behavior:'boss',
+      glow:'150,50,210', dead:false, boss:true, cloneable:false, processed:false, phase:0,
+      slowMul:1, slowUntil:0, kb:0.75, spawnT:1.0, moveT:2.5, telegraph:0, targetLane:lane, lureFlash:0
+    };
+    state.enemies.push(e);
+    state.boss = { kind:'angler', ref:e, dead:false };
+    triggerGuide('boss:angler', e.x, e.y);
+  }
+  bossbarEl.classList.remove('hidden');
+}
+function bossHpFrac(){
+  const b = state.boss;
+  if (!b) return 1;
+  if (b.kind === 'maelstrom'){
+    let hp=0, mx=0;
+    for (let i=0;i<b.segments.length;i++){ hp += Math.max(0,b.segments[i].hp); mx += b.segments[i].maxHp; }
+    return mx>0 ? hp/mx : 0;
+  }
+  const e = b.ref; return e.maxHp>0 ? Math.max(0,e.hp)/e.maxHp : 0;
+}
+function onBossDefeated(){
+  const b = state.boss;
+  if (!b) return;
+  b.dead = true;
+  state.bossesKilled++;
+  state.score += 1000*state.zone;
+  state.boss = null;
+  state.advanceTimer = 1.6;
+  bossbarEl.classList.add('hidden');
+  Audio_.zoneClear();
+  state.banner = { text:'CLEARED', t:1.4, max:1.4 };
+}
+function updateBoss(dt){
+  const b = state.boss;
+  if (!b) return;
+  if (b.kind === 'maelstrom'){
+    b.spawnT -= dt;
+    if (b.spawnT <= 0){
+      b.spawnT = 3;
+      for (let i=0;i<b.segments.length;i++){
+        const s = b.segments[i];
+        if (s.dead) continue;
+        for (let k=0;k<2;k++) newEnemy('krill', s.lane, state.topY-8-k*8);
+      }
+    }
+  } else {
+    const e = b.ref;
+    if (e.dead){ return; }
+    e.spawnT -= dt;
+    if (e.spawnT <= 0){ e.spawnT = 2.5; const d = newEnemy('darter', e.lane, state.topY-10); d.speed = ENEMY_TYPES.darter.speed; }
+    e.moveT -= dt;
+    if (e.moveT <= 0 && e.telegraph <= 0){
+      e.moveT = 4;
+      const opts = [(e.lane+1)%CONFIG.LANES, (e.lane+CONFIG.LANES-1)%CONFIG.LANES];
+      e.targetLane = opts[Math.floor(state.rng()*2)];
+      e.telegraph = 0.8;
+      e.lureFlash = 0.8;
+    }
+    if (e.telegraph > 0){
+      e.telegraph -= dt;
+      if (e.telegraph <= 0){
+        e.lane = e.targetLane;
+      }
+    }
+    if (e.lureFlash > 0) e.lureFlash -= dt;
+    if (e.hp <= e.kb*e.maxHp && e.maxHp > 0){
+      e.y -= 0.08*state.playH;
+      e.kb -= 0.25;
+      spawnBurst(e.x, e.y, '121,40,202', 10, 90);
+      state.shake = Math.max(state.shake, 6);
+    }
+  }
+}
+
+/* ============================ COMBAT ============================ */
+function fireVolley(lane, damage, pierce, slow, y){
+  const s = state.stats;
+  const n = Math.max(1, s.bullets);
+  const y0 = y==null ? state.reefY - 16 : y;
+  const cx = laneX(lane);
+  for (let i=0;i<n;i++){
+    const off = n===1 ? 0 : (i-(n-1)/2)*Math.max(s.spread, 9);
+    state.bullets.push({
+      id: state.nextId++, lane:lane, x: cx+off, y: y0, prevY: y0,
+      damage: damage, pierce: pierce, slow: slow||0, hits:{}
+    });
+  }
+}
+function fireFrom(lane, damage, pierce, y, noGate){
+  const cx = laneX(lane);
+  state.bullets.push({ id: state.nextId++, lane:lane, x:cx, y:y, prevY:y, damage:damage, pierce:pierce, slow:0, hits:{}, noGate:!!noGate });
+}
+function damageEnemy(e, dmg){
+  if (!e || e.dead) return;
+  e.hp -= dmg;
+  if (e.hp <= 0){ e.dead = true; state.deathQueue.push(e); }
+}
+function hitEnemy(e, bullet){
+  damageEnemy(e, bullet.damage);
+  if (e.dead) return;
+  if (bullet.slow > 0){ e.slowUntil = state.time + 1.5; e.slowMul = 1 - bullet.slow; }
+  spawnBurst(e.x, e.y, e.glow, 3, 60);
+  Audio_.hit();
+}
+function spawnBurst(x,y,rgb,n,sp){
+  for (let i=0;i<n;i++){
+    if (state.particles.length >= CONFIG.MAX_PARTICLES) return;
+    const a = state.rng()*6.2832, s = sp*(0.4+state.rng());
+    state.particles.push({
+      x:x, y:y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
+      life:0.4+state.rng()*0.45, max:0.85, rgb:rgb, size:1.5+state.rng()*2.5
+    });
+  }
+}
+function onDeath(e){
+  if (e.seg || e.type === 'maelstrom'){
+    const b = state.boss;
+    spawnBurst(e.x, e.y, '121,40,202', 16, 130);
+    if (b && b.kind === 'maelstrom'){
+      let alive = 0;
+      for (let i=0;i<b.segments.length;i++) if (!b.segments[i].dead) alive++;
+      if (alive === 0) onBossDefeated();
+    }
+    Audio_.kill();
+    return;
+  }
+  if (e.type === 'anglerking'){
+    spawnBurst(e.x, e.y, '150,50,210', 40, 200);
+    onBossDefeated();
+    Audio_.kill();
+    return;
+  }
+  state.kills++;
+  state.score += e.score;
+  if (state.vent === 'needle' && (e.type === 'bulwark' || e.type === 'splitter' || e.type === 'shade')) setGlow(state.glow + 0.25);
+  if (state.vent === 'spore' && ++state.gardenKills % 5 === 0){
+    for (let k=state.sentries.length-1;k>=0;k--) if (state.sentries[k].lane === e.lane) state.sentries.splice(k,1);
+    state.sentries.push({ lane:e.lane, x:laneX(e.lane), cd:0, rate:4, damage:1, until: state.time + 6, max: 6 });
+  }
+  spawnBurst(e.x, e.y, e.glow, 7, 110);
+  Audio_.kill();
+  if (e.type === 'splitter'){
+    for (let i=0;i<3;i++){
+      const k = newEnemy('krill', e.lane, e.y - 6);
+      k.x = e.x + (i-1)*14;
+    }
+  }
+  // Storm: every kill arcs to the frontmost enemy in an adjacent lane. Arc kills
+  // enter the same death queue, so chains resolve in processDeaths' guarded loop.
+  if (state.stormUntil > state.time && !e.boss){
+    const adj = [(e.lane+1)%CONFIG.LANES, (e.lane+CONFIG.LANES-1)%CONFIG.LANES];
+    const lane = adj[Math.floor(state.rng()*2)];
+    let target = null;
+    for (let i=0;i<state.enemies.length;i++){
+      const o = state.enemies[i];
+      if (o.dead || o === e || o.lane !== lane) continue;
+      if (!target || o.y > target.y) target = o;
+    }
+    if (target){
+      state.arcs.push({ ax:e.x, ay:e.y, bx:target.x, by:target.y, t:0.22, max:0.22 });
+      damageEnemy(target, CONFIG.STORM_DMG*hpMul()*(1 + 0.5*(state.stormLv-1)));
+      spawnBurst(target.x, target.y, '127,233,255', 5, 80);
+    }
+  }
+}
+function processDeaths(){
+  let guard = 0;
+  while (state.deathQueue.length && guard < 500){
+    guard++;
+    const e = state.deathQueue.shift();
+    if (e.processed) continue;
+    e.processed = true;
+    const i = state.enemies.indexOf(e);
+    if (i >= 0) state.enemies.splice(i,1);
+    onDeath(e);
+  }
+}
+function leak(e){
+  const lane = e.lane;
+  state.player.shells -= Math.max(1, e.leak);
+  // Reef burst: the leaking creature explodes and takes the crowd behind it along,
+  // so one breach costs a shell instead of the whole horde.
+  const burstR = CONFIG.LEAK_BURST_RANGE*state.playH*(1 + boon('burst'));
+  const burstY = state.reefY - burstR;
+  for (let i=0;i<state.enemies.length;i++){
+    const o = state.enemies[i];
+    if (o === e || o.lane !== lane || o.boss) continue;
+    if (o.y >= burstY) damageEnemy(o, CONFIG.LEAK_BURST_DMG*hpMul());
+    o.y -= 0.15*state.playH;
+  }
+  state.ripples.push({ x:laneX(lane), y:state.reefY, t:0.6, max:0.6, rgb:'255,106,61', r:burstR });
+  triggerCallout('leak:burst', 'Reef burst', 'A creature that breaks through costs a shell, but it bursts and takes the creatures right behind it along.', laneX(lane), state.reefY - 30);
+  state.laneFlash[lane] = 1;
+  state.dangerFlash = 1;
+  setGlow(state.glow - CONFIG.LEAK_GLOW);
+  state.zoneLeaks++;
+  if (state.pets > 0){ state.pets--; toast('A hatchling fled', null, true); }
+  if (!reduceMotion) state.shake = Math.max(state.shake, 9);
+  spawnBurst(e.x, state.reefY, '255,46,99', 14, 140);
+  Audio_.leak();
+  const i = state.enemies.indexOf(e);
+  if (i >= 0) state.enemies.splice(i,1);
+  e.processed = true;
+  if (state.player.shells <= 0){ state.player.shells = 0; gameOver(); }
+}
+
+/* ============================ PEARLS ============================ */
+// A pearl you already hold levels up (max III); otherwise it takes a free slot, or is lost.
+function addPearl(key, lvl){
+  if (!PEARLS[key]) return false;
+  const roman = ['','I','II','III'];
+  const held = state.pearls.indexOf(key);
+  if (held >= 0 && state.pearlLv[held] < 3){
+    state.pearlLv[held] = Math.min(3, state.pearlLv[held] + lvl);
+    spawnBurst(state.layout.trayCx[held], state.layout.trayCy, '255,233,243', 18, 100);
+    toast(PEARLS[key].name + ' → ' + roman[state.pearlLv[held]], PEARLS[key].col);
+    return true;
+  }
+  const slot = state.pearls.indexOf(null);
+  if (slot < 0){
+    toast('Tray full · pearl lost', null, true);
+    triggerGuide('tray:full', state.layout.trayCx[1], state.layout.trayCy);
+    return false;
+  }
+  state.pearls[slot] = key;
+  state.pearlLv[slot] = lvl;
+  toast(PEARLS[key].name + (lvl > 1 ? ' ' + roman[lvl] : ''), PEARLS[key].col);
+  spawnBurst(state.layout.trayCx[slot], state.layout.trayCy, '255,233,243', 12, 80);
+  triggerGuide('pearl:'+key, state.layout.trayCx[slot], state.layout.trayCy);
+  return true;
+}
+function usePearl(i){
+  const key = state.pearls[i];
+  if (!key) return false;
+  const P = PEARLS[key];
+  const lane = state.player.lane;
+  const L = state.pearlLv[i] || 1, v = P.lv[L-1];
+  state.pearls[i] = null;
+  state.nameFlash = { text:P.name, t:0.6, max:0.6, col:P.col };
+  Audio_.claim();
+  Audio_.tone(1050,0.16,'sine',0.06,1500);
+
+  if (key === 'polyp'){
+    for (let k=state.sentries.length-1;k>=0;k--){
+      if (state.sentries[k].lane === lane) state.sentries.splice(k,1);
+    }
+    state.sentries.push({ lane:lane, x:laneX(lane), cd:0, rate:ventBaseRate()*CONFIG.POLYP_RATE_MUL*(1 + 0.25*(L-1)), damage:state.stats.damage, until: state.time + v, max: v });
+  } else if (key === 'frost'){
+    state.frostUntil = Math.max(state.frostUntil, state.time + v);
+    state.frostMax = state.frostUntil - state.time;
+    for (let k=0;k<state.enemies.length;k++) spawnBurst(state.enemies[k].x, state.enemies[k].y, '169,236,255', 2, 40);
+  } else if (key === 'undertow'){
+    for (let k=0;k<state.enemies.length;k++){
+      const o = state.enemies[k];
+      if (!o.boss) o.y -= v*state.playH;
+    }
+    spawnBurst(state.W/2, state.reefY-40, '255,158,122', 26, 160);
+  } else if (key === 'storm'){
+    state.stormUntil = Math.max(state.stormUntil, state.time + v);
+    state.stormMax = state.stormUntil - state.time;
+    state.stormLv = L;
+    for (let k=0;k<state.enemies.length;k++){
+      if (state.rng() < 0.4) state.arcs.push({ ax:state.player.x, ay:state.reefY-40, bx:state.enemies[k].x, by:state.enemies[k].y, t:0.18, max:0.18 });
+    }
+  } else if (key === 'ink'){
+    const dmg = v * hpMul();
+    for (let k=0;k<state.enemies.length;k++){
+      const o = state.enemies[k];
+      if (o.lane !== lane || o.dead) continue;
+      damageEnemy(o, dmg);
+      spawnBurst(o.x, o.y, '154,107,255', 6, 100);
+    }
+    spawnBurst(laneX(lane), state.reefY - state.playH*0.35, '154,107,255', 30, 190);
+    state.ripples.push({ x:laneX(lane), y:state.reefY - state.playH*0.35, t:0.5, max:0.5, rgb:'154,107,255', r: state.playH*0.3 });
+  } else if (key === 'mend'){
+    state.player.shells = Math.min(CONFIG.BASE_SHELLS, state.player.shells + v);
+    spawnBurst(state.player.x, state.reefY-10, '255,201,222', 16, 110);
+  }
+  return true;
+}
+function claimGate(g){
+  const stage = gateStage(g);
+  state.gatesClaimed++;
+  state.score += 200*stage;
+  spawnBurst(g.x, g.y, gateRgb(g), 24 + 12*(stage-1), 150);
+  if (!reduceMotion) state.shake = Math.max(state.shake, 5);
+  const bonus = 0.5*(stage-1);
+  if (stage === 3 && isDeep(g)){
+    state.score += CONFIG.DEEP_SCORE;
+    if (state.pets < CONFIG.PET_MAX){
+      state.pets++;
+      toast('Hatchling! · +' + CONFIG.DEEP_SCORE, '#8FF7D2');
+      spawnBurst(state.player.x, state.reefY - 10, '143,247,210', 24, 140);
+    } else toast('Deep claim · +' + CONFIG.DEEP_SCORE, '#8FF7D2');
+  }
+  if (g.kind === 'pearl'){
+    addPearl(g.pearl, stage);
+  } else if (g.kind === 'rot'){
+    addGlow(CONFIG.ROT_GLOW);
+    for (let k=0;k<g.pack.length;k++){
+      const e = newEnemy(g.pack[k], g.lane, g.y - 8 - k*24, { clone:false });
+      e.xoff = (k%2 ? 1 : -1)*laneW()*0.12;
+    }
+    toast('+' + CONFIG.ROT_GLOW + ' Glow · they broke free', '#B4E35A');
+  } else {
+    addGlow(1 + bonus);
+  }
+}
+function isDeep(g){ return g.y >= state.reefY - CONFIG.DEEP_RANGE*state.playH; }
+// A pearl gate is worthless while the tray is full and you hold no pearl of its kind below III.
+function pearlWasted(g){
+  if (g.kind !== 'pearl' || state.pearls.indexOf(null) >= 0) return false;
+  const h = state.pearls.indexOf(g.pearl);
+  return h < 0 || state.pearlLv[h] >= 3;
+}
+function gateRgb(g){ return g.kind === 'pearl' ? '255,233,243' : (g.kind === 'rot' ? '180,227,90' : '255,215,106'); }
+function addGlow(n){
+  state.glowGraceUntil = state.time + CONFIG.GLOW_GRACE;
+  const over = state.glow + n - glowCap();
+  if (over > 0.01){
+    const pts = Math.round(over*CONFIG.GLOW_OVERFLOW_SCORE);
+    state.score += pts;
+    toast('Overflow +' + pts, '#FFD76A');
+  }
+  setGlow(state.glow + n);
+}
+
+/* ============================ UPDATE ============================ */
+function updatePlayer(dt){
+  const p = state.player;
+  const tx = laneX(p.lane);
+  const tau = CONFIG.PLAYER_GLIDE/2.6;
+  p.x += (tx - p.x) * (1 - Math.exp(-dt/Math.max(0.001,tau)));
+  state.fireCd -= dt;
+  if (state.fireCd <= 0){
+    state.fireCd = 1/state.stats.fireRate;
+    const s = state.stats;
+    fireVolley(p.lane, s.damage, s.pierce, s.slow);
+    state.volleyIndex++;
+    if ((state.glowTier >= 4 && state.volleyIndex % CONFIG.GLOW_FULL_EVERY === 0) || (boon('side') && state.volleyIndex % Math.max(2, 5 - boon('side')) === 0)){
+      const adj = [(p.lane+1)%CONFIG.LANES, (p.lane+CONFIG.LANES-1)%CONFIG.LANES];
+      for (let i=0;i<adj.length;i++) fireFrom(adj[i], s.damage, s.pierce, state.reefY-16, true);
+    }
+    Audio_.shot();
+  }
+  if (state.pets > 0){
+    state.petCd -= dt;
+    if (state.petCd <= 0){
+      state.petCd = 1/(CONFIG.PET_RATE*state.pets);
+      fireFrom(p.lane, state.stats.damage, 0, state.reefY - 20);
+    }
+  }
+}
+function updateGates(dt){
+  for (let i=state.gates.length-1;i>=0;i--){
+    const g = state.gates[i];
+    g.y += CONFIG.GATE_SPEED*state.playH*dt;
+    const stage = gateStage(g);
+    g.age += dt;
+    if (gateStage(g) > stage) triggerGuide('gate:ripe', g.x, g.y);
+    if (stage === 3 && isDeep(g) && g.kind !== 'rot') triggerGuide('gate:deep', g.x, g.y);
+    if (g.y >= state.reefY){
+      spawnBurst(g.x, state.reefY, '255,215,106', 10, 70);
+      state.gates.splice(i,1);
+    }
+  }
+}
+function updateEnemies(dt){
+  const playH = state.playH;
+  for (let i=state.enemies.length-1;i>=0;i--){
+    const e = state.enemies[i];
+    if (e.dead) continue;
+    e.prevY = e.y;
+    let slow = e.boss ? 1 : tideSpeed() * (mod('riptide') ? 1.2 : 1);
+    if (e.slowUntil > state.time) slow *= (e.slowMul || 1);
+    if (state.frostUntil > state.time) slow *= e.boss ? (1 - CONFIG.FROST_BOSS_SLOW) : (1 - CONFIG.FROST_SLOW);
+    e.curSlow = slow;
+    // behaviour
+    if (e.behavior === 'wiggle'){
+      e.x = laneX(e.lane) + Math.sin(state.time*6 + e.phase)*e.r*0.7;
+    } else if (e.behavior === 'dash'){
+      if (!e.dashStarted && e.y >= e.dashAt){
+        e.dashStarted = true;
+        const adj = [(e.lane+1)%CONFIG.LANES, (e.lane+CONFIG.LANES-1)%CONFIG.LANES];
+        e.lane = adj[Math.floor(state.rng()*2)];
+        e.dashX0 = e.x; e.dashX1 = laneX(e.lane); e.dashT = 0;
+      }
+      if (e.dashStarted && e.dashT < 0.4){
+        e.dashT += dt;
+        e.x = lerp(e.dashX0, e.dashX1, clamp(e.dashT/0.4,0,1));
+      } else {
+        e.x = laneX(e.lane);
+      }
+    } else {
+      e.x = laneX(e.lane) + (e.xoff||0);
+    }
+    // move
+    e.y += e.speed*playH*dt*e.curSlow;
+    // Shade: one dark pulse that drains Glow as it nears the reef
+    if (e.type === 'shade' && !e.drained && e.y >= state.reefY - CONFIG.SHADE_RANGE*playH){
+      e.drained = true;
+      setGlow(state.glow - CONFIG.SHADE_DRAIN);
+      state.ripples.push({ x:e.x, y:e.y, t:0.7, max:0.7, rgb:'121,40,202', r:playH*0.22 });
+      spawnBurst(e.x, e.y, '121,40,202', 18, 120);
+      Audio_.tone(190,0.35,'sawtooth',0.06,80);
+    }
+    // cloning
+    checkClone(e);
+    // reef
+    if (e.y >= state.reefY){
+      if (e.boss){ gameOver(); return; }
+      leak(e);
+    }
+  }
+}
+function checkClone(e){
+  if (e.boss || !e.cloneable || e.leak > 1) return;
+  for (let i=0;i<state.gates.length;i++){
+    const g = state.gates[i];
+    if (g.lane !== e.lane || g.kind === 'rot') continue;
+    if (e.prevY < g.y && e.y >= g.y){
+      e.cloneable = false;
+      if (gateStage(g) > 1){
+        g.eaten++;
+        spawnBurst(g.x, g.y, '255,180,110', 8, 90);
+      } else if (g.clones < CONFIG.GATE_MAX_CLONES){
+        spawnClone(e, g);
+        g.clones++;
+        spawnBurst(g.x, g.y, '255,46,99', 6, 80);
+        triggerCallout('clone:first', 'Cloned!', 'Creatures passing an unclaimed gate are copied.', g.x, g.y);
+        if (g.clones >= CONFIG.GATE_MAX_CLONES){
+          spawnBurst(g.x, g.y, '255,46,99', 18, 130);
+          state.gates.splice(i,1);
+        }
+      }
+      return;
+    }
+  }
+}
+function updateSentries(dt){
+  for (let i=state.sentries.length-1;i>=0;i--){
+    const s = state.sentries[i];
+    if (s.until && state.time >= s.until){
+      spawnBurst(s.x, state.reefY-22, '143,247,210', 10, 70);
+      state.sentries.splice(i,1);
+      continue;
+    }
+    s.x = laneX(s.lane);
+    s.cd -= dt;
+    if (s.cd <= 0){
+      s.cd = 1/s.rate;
+      fireFrom(s.lane, s.damage, 0, state.reefY - 26, true);
+    }
+  }
+}
+function updateBullets(dt){
+  const playH = state.playH;
+  for (let i=state.bullets.length-1;i>=0;i--){
+    const b = state.bullets[i];
+    b.prevY = b.y;
+    b.y -= CONFIG.BULLET_SPEED*playH*dt;
+    if (b.y < state.topY - 24){ state.bullets.splice(i,1); continue; }
+    let best = null, bestY = -1, bestIsGate = false;
+    for (let j=0;j<state.enemies.length;j++){
+      const e = state.enemies[j];
+      if (e.dead || e.lane !== b.lane) continue;
+      if (b.hits[e.id]) continue;
+      const rad = e.r + CONFIG.BULLET_R;
+      if (e.y + rad >= b.y && e.y - rad <= b.prevY){ if (e.y > bestY){ bestY = e.y; best = e; bestIsGate = false; } }
+    }
+    for (let j=0;j<state.gates.length;j++){
+      const g = state.gates[j];
+      if (b.noGate || g.lane !== b.lane) continue;
+      if (b.hits[g.id]) continue;
+      const rad = CONFIG.GATE_H*0.5 + CONFIG.BULLET_R;
+      if (g.y + rad >= b.y && g.y - rad <= b.prevY){ if (g.y > bestY){ bestY = g.y; best = g; bestIsGate = true; } }
+    }
+    if (!best) continue;
+    b.hits[best.id] = true;
+    if (bestIsGate){
+      const g = best;
+      g.charge += b.damage * state.stats.gateChargeMul;
+      Audio_.charge(clamp(g.charge/g.needed,0,1));
+      spawnBurst(b.x, g.y, '255,215,106', 3, 60);
+      if (g.charge >= g.needed){
+        claimGate(g);
+        const gi = state.gates.indexOf(g);
+        if (gi >= 0) state.gates.splice(gi,1);
+      }
+    } else {
+      hitEnemy(best, b);
+    }
+    if (b.pierce > 0) b.pierce--; else state.bullets.splice(i,1);
+  }
+}
+function updateParticles(dt){
+  for (let i=state.particles.length-1;i>=0;i--){
+    const p = state.particles[i];
+    p.life -= dt;
+    if (p.life <= 0){ state.particles.splice(i,1); continue; }
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    p.vx *= 0.94; p.vy *= 0.94;
+    p.vy += 40*dt;
+  }
+  for (let i=state.arcs.length-1;i>=0;i--){
+    state.arcs[i].t -= dt;
+    if (state.arcs[i].t <= 0) state.arcs.splice(i,1);
+  }
+  for (let i=state.ripples.length-1;i>=0;i--){
+    state.ripples[i].t -= dt;
+    if (state.ripples[i].t <= 0) state.ripples.splice(i,1);
+  }
+}
+function updateSpawning(dt){
+  for (let i=state.spawnQueue.length-1;i>=0;i--){
+    const s = state.spawnQueue[i];
+    s.t -= dt;
+    if (s.t <= 0){
+      if (s.type === 'krill') spawnKrillCluster(s.lane, null);
+      else newEnemy(s.type, s.lane, state.topY - ENEMY_TYPES[s.type].r - 8);
+      state.spawnQueue.splice(i,1);
+    }
+  }
+}
+function update(dt){
+  state.time += dt;
+  // Drain grows with Glow: high tiers need upkeep, low tiers stay stable. A claim pauses it briefly.
+  const glowFloor = state.vent === 'lantern' && state.glow >= 1 ? 1 : 0;
+  if (state.glow > glowFloor && state.time >= state.glowGraceUntil){
+    const drain = (CONFIG.GLOW_DRAIN_BASE + CONFIG.GLOW_DRAIN_PER*state.glow) * (state.zone === 1 ? CONFIG.ZONE1_DRAIN_MUL : 1) * Math.pow(0.65, boon('steady')) * (mod('riptide') ? 0.7 : 1) * (state.vent === 'tidecaller' ? (state.flood ? 1.6 : 0) : 1);
+    setGlow(Math.max(glowFloor, state.glow - dt*drain));
+  }
+  const playH = state.playH;
+  if (state.phase === 'waves'){
+    state.tZone += dt;
+    state.waveTimer -= dt;
+    if (state.waveTimer <= 0){ state.waveTimer = waveInterval(); scheduleWave(); }
+    if (state.tZone >= CONFIG.ZONE_DURATION) startBoss();
+  } else {
+    state.tZone += dt;
+  }
+  state.gateTimer -= dt;
+  if (state.gateTimer <= 0){ state.gateTimer = gateInterval(); spawnGate(); }
+  if (state.vent === 'tidecaller' && (Math.floor(state.time/10) % 2 === 1) !== state.flood){
+    state.flood = !state.flood;
+    recalcStats();
+    state.banner = { text: state.flood ? 'FLOOD' : 'EBB', t:1.0, max:1.0 };
+  }
+  if (state.advanceTimer > 0){
+    state.advanceTimer -= dt;
+    if (state.advanceTimer <= 0) offerBoons();
+  }
+  if (BOT) autopilot(dt);
+  updatePlayer(dt);
+  updateSpawning(dt);
+  updateGates(dt);
+  updateEnemies(dt);
+  if (state.screen !== 'playing') return;
+  updateBoss(dt);
+  updateSentries(dt);
+  updateBullets(dt);
+  processDeaths();
+  updateParticles(dt);
+  state.shake *= Math.pow(0.001, dt);
+  if (state.shake < 0.2) state.shake = 0;
+  for (let i=0;i<3;i++){ state.laneFlash[i] = Math.max(0, state.laneFlash[i] - dt*2.2); }
+  state.dangerFlash = Math.max(0, state.dangerFlash - dt*2.2);
+  updateToasts(dt);
+  updateHud();
+}
+function autopilot(dt){
+  const p = state.player, playH = state.playH;
+  const front = [-Infinity,-Infinity,-Infinity];
+  for (let i=0;i<state.enemies.length;i++){
+    const e = state.enemies[i];
+    if (!e.dead && e.y > front[e.lane]) front[e.lane] = e.y;
+  }
+  let low = 0;
+  for (let l=1;l<CONFIG.LANES;l++) if (front[l] > front[low]) low = l;
+  if (front[low] >= state.reefY - 0.3*playH){
+    for (let i=0;i<state.pearls.length;i++){
+      if (state.pearls[i]){ usePearl(i); break; }
+    }
+  }
+  if (front[low] >= state.reefY - 0.35*playH){ p.lane = low; return; }
+  let gl = -1, gn = Infinity;
+  for (let i=0;i<state.gates.length;i++){
+    const g = state.gates[i];
+    if (g.kind === 'rot' || g.charge >= g.needed || g.y >= state.reefY - 0.3*playH) continue;
+    let n = 0;
+    for (let j=0;j<state.enemies.length;j++){ const e = state.enemies[j]; if (!e.dead && e.lane === g.lane && e.y > g.y) n++; }
+    if (n < gn){ gn = n; gl = g.lane; }
+  }
+  if (gl >= 0) p.lane = gl;
+  else if (front[low] > -Infinity) p.lane = low;
+}
+
+/* ============================ HUD ============================ */
+let hudCache = { score:-1, depth:-1, zone:-1, boss:-1 };
+function updateHud(){
+  const depth = state.zone*100 + Math.floor(Math.min(state.tZone,99));
+  if (state.score !== hudCache.score){ hudCache.score = state.score; hScoreEl.textContent = String(state.score); }
+  if (depth !== hudCache.depth){ hudCache.depth = depth; hDepthEl.textContent = depth+'m'; }
+  const frac = state.phase === 'waves' ? clamp(state.tZone/CONFIG.ZONE_DURATION,0,1) : 1;
+  zoneFillEl.style.width = (frac*100).toFixed(1)+'%';
+  if (state.boss){
+    const f = bossHpFrac();
+    bossfillEl.style.width = (f*100).toFixed(1)+'%';
+  }
+}
+
+/* ============================ RENDER ============================ */
+function render(){
+  const W = state.W, H = state.H;
+  if (bgZone !== state.zone) buildBg();
+  ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
+  ctx.save();
+  if (state.shake > 0.2 && !reduceMotion){
+    ctx.translate((state.rng()-0.5)*state.shake, (state.rng()-0.5)*state.shake);
+  }
+  ctx.fillStyle = bgGrad || '#04121F';
+  ctx.fillRect(-20,-20,W+40,H+40);
+  drawKelp();
+  drawAmbience();
+  drawLaneFloor();
+  // lane flashes
+  for (let l=0;l<3;l++){
+    if (state.laneFlash[l] > 0){
+      const g = ctx.createLinearGradient(0,state.topY,0,state.reefY);
+      g.addColorStop(0,'rgba(255,46,99,0)');
+      g.addColorStop(0.7,'rgba(255,46,99,'+(0.30*state.laneFlash[l])+')');
+      g.addColorStop(1,'rgba(255,46,99,'+(0.5*state.laneFlash[l])+')');
+      ctx.fillStyle = g;
+      ctx.fillRect(l*laneW(), state.topY, laneW(), state.reefY-state.topY);
+    }
+  }
+  drawGates();
+  drawSentries();
+  drawEnemies();
+  drawBullets();
+  drawArcs();
+  drawRipples();
+  drawParticles();
+  if (state.screen !== 'title' && state.screen !== 'intro'){ drawDeepLine(); drawPlayer(); drawPets(); }
+  drawShells();
+  drawGlowMeter();
+  drawPearlTray();
+  drawPearlTimers();
+  drawBanner();
+  ctx.restore();
+  drawNameFlash();
+  drawCallout();
+}
+function drawKelp(){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(27,58,92,0.55)';
+  ctx.lineWidth = 1.5;
+  for (let l=1;l<CONFIG.LANES;l++){
+    const base = l*laneW();
+    ctx.beginPath();
+    for (let y=state.topY-20; y<=state.reefY+10; y+=14){
+      const x = base + Math.sin(y*0.035 + state.time*0.7 + l)*6;
+      if (y === state.topY-20) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawLaneFloor(){
+  const w = laneW();
+  const top = state.topY, bottom = state.reefY;
+  ctx.save();
+  for (let l=0;l<CONFIG.LANES;l++){
+    const middle = l === Math.floor(CONFIG.LANES/2);
+    const a = middle ? CONFIG.LANE_TINT_ALPHA : CONFIG.LANE_TINT_ALT_ALPHA;
+    const rgb = middle ? CONFIG.LANE_TINT_RGB : CONFIG.LANE_TINT_ALT_RGB;
+    ctx.fillStyle = 'rgba('+rgb+','+a+')';
+    ctx.fillRect(l*w, top, w, bottom-top);
+  }
+  if (state.screen !== 'title' && state.screen !== 'intro'){
+    const p = state.player;
+    const g = ctx.createLinearGradient(0, bottom, 0, top);
+    g.addColorStop(0, 'rgba('+CONFIG.LANE_PLAYER_TINT_RGB+','+CONFIG.LANE_PLAYER_TINT_ALPHA+')');
+    g.addColorStop(1, 'rgba('+CONFIG.LANE_PLAYER_TINT_RGB+',0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(p.lane*w, top, w, bottom-top);
+  }
+  ctx.restore();
+}
+function drawDeepLine(){
+  const y = state.reefY - CONFIG.DEEP_RANGE*state.playH;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(143,247,210,0.16)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3,7]);
+  ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(state.W, y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(143,247,210,0.32)';
+  ctx.font = "600 9px Sora, system-ui, sans-serif";
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  ctx.fillText('DEEP', 6, y - 3);
+  ctx.restore();
+}
+function drawPets(){
+  for (let i=0;i<state.pets;i++){
+    const side = i === 0 ? -1 : 1;
+    const x = state.player.x + side*34, y = state.reefY - 4 + Math.sin(state.time*4 + i*2)*3;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    drawGlow('143,247,210', x, y, 16, 0.6);
+    ctx.restore();
+    ctx.fillStyle = '#8FF7D2';
+    ctx.beginPath(); ctx.ellipse(x, y, 7, 6, 0, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = '#04121F';
+    ctx.beginPath(); ctx.arc(x - 2.5, y - 1, 1.3, 0, 6.2832); ctx.arc(x + 2.5, y - 1, 1.3, 0, 6.2832); ctx.fill();
+  }
+}
+function drawPlayer(){
+  const p = state.player;
+  const tier = state.glowTier;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  drawGlow('79,240,224', p.x, state.reefY, 46 + tier*9, 0.85 + tier*0.03);
+  ctx.restore();
+  // body shell
+  ctx.save();
+  ctx.translate(p.x, state.reefY);
+  if (tier > 0){
+    ctx.fillStyle = 'rgba(184,255,242,0.55)';
+    for (let i=0;i<tier;i++){
+      const a = state.time*0.9 + i*6.2832/tier;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a)*(23+tier*2), Math.sin(a)*(15+tier*1.5), 7, 3.4, a, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+  ctx.fillStyle = '#4FF0E0';
+  ctx.beginPath();
+  ctx.moveTo(0,-20);
+  ctx.bezierCurveTo(15,-14,18,8,0,18);
+  ctx.bezierCurveTo(-18,8,-15,-14,0,-20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath(); ctx.ellipse(0,-2,6,9,0,0,6.2832); ctx.fill();
+  ctx.fillStyle = 'rgba(4,18,31,0.8)';
+  ctx.beginPath(); ctx.arc(-3,-8,2,0,6.2832); ctx.fill();
+  ctx.beginPath(); ctx.arc(3,-8,2,0,6.2832); ctx.fill();
+  ctx.restore();
+}
+function drawEnemies(){
+  for (let i=0;i<state.enemies.length;i++){
+    const e = state.enemies[i];
+    if (e.dead) continue;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    drawGlow(e.glow, e.x, e.y, e.r*1.9, e.boss?0.95:0.8);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    const icy = e.slowUntil > state.time;
+    if (e.type === 'drifter') drawDrifter(e, icy);
+    else if (e.type === 'krill') drawKrill(e, icy);
+    else if (e.type === 'darter') drawDarter(e, icy);
+    else if (e.type === 'bulwark') drawBulwark(e, icy);
+    else if (e.type === 'splitter') drawSplitter(e, icy);
+    else if (e.type === 'shade') drawShade(e, icy);
+    else if (e.type === 'maelstrom') drawMaelstrom(e);
+    else if (e.type === 'anglerking') drawAngler(e);
+    ctx.restore();
+    if (e.maxHp > 6 && !e.boss){
+      const w = e.r*2, hf = clamp(e.hp/e.maxHp,0,1);
+      ctx.fillStyle = 'rgba(4,18,31,0.7)';
+      ctx.fillRect(e.x-w/2, e.y-e.r-9, w, 3);
+      ctx.fillStyle = '#FF6A3D';
+      ctx.fillRect(e.x-w/2, e.y-e.r-9, w*hf, 3);
+    }
+  }
+}
+function drawDrifter(e, icy){
+  const r = e.r;
+  ctx.fillStyle = icy ? '#A9ECFF' : '#FF6A3D';
+  ctx.beginPath(); ctx.arc(0,-r*0.3,r*0.9,Math.PI,0); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = icy ? '#DFF6FF' : '#FF2E63';
+  ctx.lineWidth = 1.6;
+  for (let i=-2;i<=2;i++){
+    ctx.beginPath();
+    ctx.moveTo(i*r*0.32, -r*0.2);
+    ctx.quadraticCurveTo(i*r*0.5 + Math.sin(state.time*4+e.phase+i)*3, r*0.4, i*r*0.35, r*1.0);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#FFE9B8';
+  ctx.beginPath(); ctx.arc(0,-r*0.35,2.2,0,6.2832); ctx.fill();
+}
+function drawKrill(e, icy){
+  const r = e.r;
+  ctx.fillStyle = icy ? '#CDEFFF' : '#FF9E5C';
+  ctx.beginPath(); ctx.ellipse(0,0,r,r*0.62,0,0,6.2832); ctx.fill();
+  ctx.strokeStyle = icy ? '#EAF8FF' : '#FF2E63';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(r,0); ctx.lineTo(r*1.9, -r*0.5); ctx.moveTo(r,0); ctx.lineTo(r*1.9, r*0.5); ctx.stroke();
+  ctx.fillStyle = '#FFF3CC';
+  ctx.beginPath(); ctx.arc(-r*0.4,0,1.2,0,6.2832); ctx.fill();
+}
+function drawDarter(e, icy){
+  const r = e.r;
+  ctx.fillStyle = icy ? '#A9ECFF' : '#FF7A55';
+  ctx.beginPath();
+  ctx.moveTo(0,r);
+  ctx.lineTo(r*0.85,-r);
+  ctx.lineTo(0,-r*0.55);
+  ctx.lineTo(-r*0.85,-r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#FF2E63';
+  ctx.beginPath(); ctx.arc(0,-r*0.25,2,0,6.2832); ctx.fill();
+}
+function drawBulwark(e, icy){
+  const r = e.r;
+  ctx.fillStyle = icy ? '#B8E8FF' : '#D9702F';
+  ctx.beginPath(); ctx.arc(0,0,r,0,6.2832); ctx.fill();
+  ctx.strokeStyle = icy ? '#EAF8FF' : '#FFB25A';
+  ctx.lineWidth = 2;
+  for (let i=0;i<3;i++){
+    ctx.beginPath();
+    ctx.arc(0,0,r*0.72 - i*6, -0.6+i, 4.6+i);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#FF2E63';
+  ctx.beginPath(); ctx.arc(0,0,r*0.28,0,6.2832); ctx.fill();
+  ctx.fillStyle = '#FFE9B8';
+  ctx.beginPath(); ctx.arc(0,0,3,0,6.2832); ctx.fill();
+}
+function drawSplitter(e, icy){
+  const r = e.r;
+  ctx.fillStyle = icy ? '#B8E8FF' : '#FF5E86';
+  ctx.beginPath();
+  const spikes = 12;
+  for (let i=0;i<spikes;i++){
+    const a = i/spikes*6.2832;
+    const rr2 = (i%2===0)? r : r*0.72;
+    const x = Math.cos(a)*rr2, y = Math.sin(a)*rr2;
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#FF2E63';
+  ctx.beginPath(); ctx.arc(0,0,r*0.42,0,6.2832); ctx.fill();
+  ctx.fillStyle = '#FFE9B8';
+  ctx.beginPath(); ctx.arc(0,0,2.6,0,6.2832); ctx.fill();
+}
+function drawShade(e, icy){
+  const r = e.r;
+  ctx.fillStyle = icy ? '#CDEFFF' : '#7928CA';
+  ctx.beginPath();
+  ctx.arc(0,0,r*0.78,0,6.2832);
+  ctx.fill();
+  ctx.strokeStyle = icy ? '#EAF8FF' : '#5B1E9E';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  for (let i=-2;i<=2;i++){
+    ctx.beginPath();
+    ctx.moveTo(i*r*0.28, r*0.4);
+    ctx.quadraticCurveTo(i*r*0.5 + Math.sin(state.time*3 + e.phase + i)*3, r*0.9, i*r*0.34, r*1.35);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#3A0F63';
+  ctx.beginPath(); ctx.arc(0,0,r*0.44,0,6.2832); ctx.fill();
+  ctx.fillStyle = e.drained ? 'rgba(185,140,255,0.28)' : 'rgba(185,140,255,0.75)';
+  ctx.beginPath(); ctx.ellipse(0,-r*0.1, r*0.28, r*0.15, 0, 0, 6.2832); ctx.fill();
+  ctx.fillStyle = '#1B0733';
+  ctx.beginPath(); ctx.arc(0,-r*0.1, 1.5, 0, 6.2832); ctx.fill();
+}
+function drawMaelstrom(e){
+  const r = e.r;
+  ctx.strokeStyle = '#7928CA';
+  ctx.lineWidth = 3;
+  for (let i=0;i<3;i++){
+    ctx.beginPath();
+    for (let a=0;a<=6.2832;a+=0.3){
+      const rad = r*(0.4+i*0.28) + Math.sin(a*3 + state.time*3 + e.phase)*5;
+      const x = Math.cos(a+state.time*1.5*(i%2?1:-1))*rad;
+      const y = Math.sin(a+state.time*1.5*(i%2?1:-1))*rad;
+      if (a===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#FF2E63';
+  ctx.beginPath(); ctx.arc(0,0, r*0.28 + Math.sin(state.time*5)*2,0,6.2832); ctx.fill();
+}
+function drawAngler(e){
+  const r = e.r;
+  ctx.fillStyle = '#6B21B0';
+  ctx.beginPath(); ctx.ellipse(0,0,r,r*0.8,0,0,6.2832); ctx.fill();
+  ctx.fillStyle = '#7928CA';
+  ctx.beginPath(); ctx.ellipse(0,-r*0.15,r*0.9,r*0.6,0,0,6.2832); ctx.fill();
+  // jaw
+  ctx.fillStyle = '#4A1480';
+  ctx.beginPath();
+  ctx.moveTo(-r*0.6,r*0.1); ctx.lineTo(r*0.6,r*0.1); ctx.lineTo(0,r*0.85); ctx.closePath(); ctx.fill();
+  // teeth
+  ctx.fillStyle = '#FFE9B8';
+  for (let i=-2;i<=2;i++){
+    const x = i*r*0.22;
+    ctx.beginPath(); ctx.moveTo(x-2,r*0.12); ctx.lineTo(x+2,r*0.12); ctx.lineTo(x,r*0.36); ctx.closePath(); ctx.fill();
+  }
+  // eye
+  ctx.fillStyle = '#FF2E63';
+  ctx.beginPath(); ctx.arc(-r*0.35,-r*0.25, r*0.16,0,6.2832); ctx.fill();
+  // lure
+  const lx = Math.sin(state.time*2)*r*0.3;
+  ctx.strokeStyle = '#7928CA'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(r*0.3,-r*0.5); ctx.quadraticCurveTo(r*0.9,-r*1.1, lx - -r*0.2,-r*1.2); ctx.stroke();
+  const flick = e.lureFlash>0 ? 1 : (0.5+0.5*Math.sin(state.time*6));
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  drawGlow('255,46,99', lx - -r*0.2, -r*1.2, r*0.5, flick);
+  ctx.restore();
+}
+function gateInDanger(g){
+  if (g.charge >= g.needed || g.kind === 'rot') return false;
+  const range = CONFIG.GATE_WARN_RANGE * state.playH;
+  for (let i=0;i<state.enemies.length;i++){
+    const e = state.enemies[i];
+    if (e.dead || e.boss || !e.cloneable || e.lane !== g.lane) continue;
+    const d = g.y - e.y;
+    if (d >= 0 && d <= range) return true;
+  }
+  return false;
+}
+function drawGates(){
+  for (let i=0;i<state.gates.length;i++){
+    const g = state.gates[i];
+    const w = laneW() - 12;
+    const x = g.x - w/2, y = g.y - CONFIG.GATE_H/2;
+    const ratio = clamp(g.charge/g.needed,0,1);
+    const pearl = g.kind === 'pearl', rot = g.kind === 'rot';
+    const stage = gateStage(g);
+    const rgb = gateRgb(g);
+    const col = pearl ? '#FFE9F3' : (rot ? '#B4E35A' : '#FFD76A');
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const danger = g.clones > 0;
+    const warn = gateInDanger(g);
+    const pulse = danger ? (0.5+0.5*Math.sin(state.time*CONFIG.GATE_CLONE_PULSE)) : 0;
+    const hatch = !rot && stage === 3 && isDeep(g) && state.pets < CONFIG.PET_MAX;
+    const hp = hatch ? 0.5 + 0.5*Math.sin(state.time*6) : 0;
+    drawGlow(danger ? '255,46,99' : (hatch ? '143,247,210' : rgb), g.x, g.y, w*(0.45 + 0.12*stage), 0.4 + 0.15*stage + 0.3*pulse + 0.3*hp);
+    ctx.restore();
+    ctx.save();
+    const grd = ctx.createLinearGradient(x,y,x,y+CONFIG.GATE_H);
+    if (danger){
+      grd.addColorStop(0,'rgba(255,46,99,0.10)');
+      grd.addColorStop(0.5,'rgba(255,46,99,'+(0.5+0.3*pulse)+')');
+      grd.addColorStop(1,'rgba('+rgb+',0.14)');
+    } else {
+      grd.addColorStop(0,'rgba('+rgb+',0.10)');
+      grd.addColorStop(0.5,'rgba('+rgb+',0.42)');
+      grd.addColorStop(1,'rgba('+rgb+',0.10)');
+    }
+    ctx.fillStyle = grd;
+    rr(x,y,w,CONFIG.GATE_H,10); ctx.fill();
+    if (warn){
+      const wa = CONFIG.GATE_WARN_ALPHA_MIN + (1-CONFIG.GATE_WARN_ALPHA_MIN)*(0.5+0.5*Math.sin(state.time*CONFIG.GATE_WARN_PULSE));
+      ctx.strokeStyle = 'rgba('+CONFIG.GATE_WARN_RGB+','+wa+')';
+      ctx.lineWidth = CONFIG.GATE_WARN_WIDTH;
+    } else {
+      ctx.strokeStyle = danger ? '#FF2E63' : col;
+      ctx.lineWidth = CONFIG.GATE_BORDER_W;
+    }
+    if (rot) ctx.setLineDash([5,4]);
+    rr(x+0.5,y+0.5,w-1,CONFIG.GATE_H-1,10); ctx.stroke();
+    ctx.setLineDash([]);
+    // rotten: the caged pack wriggles inside the gate
+    if (rot){
+      for (let k=0;k<g.pack.length;k++){
+        const px = x + w - 14 - k*11, py = g.y + Math.sin(state.time*5 + k*1.7)*3;
+        ctx.fillStyle = g.pack[k] === 'splitter' ? '#FF5A96' : '#FF6A3D';
+        ctx.beginPath(); ctx.arc(px, py, g.pack[k] === 'splitter' ? 4.5 : 3.5, 0, 6.2832); ctx.fill();
+      }
+    }
+    // ripeness dots
+    if (!rot && !g.clones){
+      for (let k=0;k<3;k++){
+        ctx.fillStyle = k < stage ? col : 'rgba(255,255,255,0.18)';
+        ctx.beginPath(); ctx.arc(x + w - 10 - (2-k)*8, g.y - 5, 2.6, 0, 6.2832); ctx.fill();
+      }
+    }
+    // glyph + label
+    drawGlyph(pearl ? g.pearl : (rot ? 'rot' : 'sun'), x + 18, g.y, 10, col);
+    const wasted = pearlWasted(g);
+    if (wasted) ctx.globalAlpha = 0.45;
+    const label = pearl ? PEARLS[g.pearl].name.toUpperCase() + (wasted ? ' · FULL' : '') : (rot ? 'ROT +' + CONFIG.ROT_GLOW : 'GLOW +' + (1 + 0.5*(stage-1)));
+    ctx.fillStyle = pearl ? '#FFF4FA' : (rot ? '#E4F7C2' : '#FFF2CF');
+    ctx.font = "600 11px Sora, system-ui, sans-serif";
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + 34, g.y - 4);
+    // charge bar
+    ctx.fillStyle = 'rgba(4,18,31,0.7)';
+    ctx.fillRect(x+34, g.y+5, w-46, 4);
+    ctx.fillStyle = col;
+    ctx.fillRect(x+34, g.y+5, (w-46)*ratio, 4);
+    // clone counter
+    if (g.clones > 0){
+      ctx.fillStyle = '#FF2E63';
+      ctx.font = "700 12px Unbounded, system-ui, sans-serif";
+      ctx.textAlign = 'right';
+      ctx.fillText('\u00d7'+g.clones, x+w-8, g.y - 5);
+    }
+    ctx.restore();
+  }
+}
+function drawSentries(){
+  for (let i=0;i<state.sentries.length;i++){
+    const s = state.sentries[i];
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    drawGlow('79,240,224', s.x, state.reefY - 22, 20, 0.7);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(s.x, state.reefY - 22);
+    ctx.fillStyle = '#8FF7D2';
+    ctx.beginPath(); ctx.arc(0,0,5,0,6.2832); ctx.fill();
+    ctx.strokeStyle = '#4FF0E0'; ctx.lineWidth=1.4;
+    for (let k=-1;k<=1;k++){
+      ctx.beginPath(); ctx.moveTo(k*3,3); ctx.quadraticCurveTo(k*5,9,k*4,13); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+function drawBullets(){
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  ctx.lineCap = 'round';
+  for (let i=0;i<state.bullets.length;i++){
+    const b = state.bullets[i];
+    drawGlow('184,255,242', b.x, b.y, CONFIG.BULLET_GLOW_R, CONFIG.BULLET_GLOW_ALPHA);
+    ctx.strokeStyle = 'rgba(184,255,242,'+CONFIG.BULLET_TRAIL_ALPHA+')';
+    ctx.lineWidth = CONFIG.BULLET_TRAIL_W;
+    ctx.beginPath(); ctx.moveTo(b.x, b.y+CONFIG.BULLET_TRAIL_LEN); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  ctx.restore();
+  ctx.fillStyle = '#FFFFFF';
+  for (let i=0;i<state.bullets.length;i++){
+    const b = state.bullets[i];
+    ctx.beginPath(); ctx.ellipse(b.x, b.y, CONFIG.BULLET_BODY_RX, CONFIG.BULLET_BODY_RY, 0, 0, 6.2832); ctx.fill();
+  }
+}
+function drawArcs(){
+  if (!state.arcs.length) return;
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  ctx.lineCap = 'round';
+  for (let i=0;i<state.arcs.length;i++){
+    const a = state.arcs[i];
+    const seg = 7;
+    ctx.strokeStyle = 'rgba(127,233,255,'+(a.t/a.max)+')';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(a.ax,a.ay);
+    for (let s=1;s<seg;s++){
+      const t = s/seg;
+      const x = lerp(a.ax,a.bx,t) + (Math.random()-0.5)*14;
+      const y = lerp(a.ay,a.by,t) + (Math.random()-0.5)*14;
+      ctx.lineTo(x,y);
+    }
+    ctx.lineTo(a.bx,a.by);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawParticles(){
+  if (!state.particles.length) return;
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  for (let i=0;i<state.particles.length;i++){
+    const p = state.particles[i];
+    const a = clamp(p.life/p.max,0,1);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba('+p.rgb+',1)';
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*a,0,6.2832); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+function drawShells(){
+  if (state.screen === 'title' || state.screen === 'intro') return;
+  const total = CONFIG.BASE_SHELLS;
+  const size = 15;
+  const L = state.layout;
+  const gap = L.shellGap;
+  const startX = L.shellStart;
+  const y = L.shellY;
+  for (let i=0;i<total;i++){
+    const x = startX + i*gap;
+    const filled = i < state.player.shells;
+    ctx.save();
+    ctx.translate(x,y);
+    if (filled){
+      ctx.save(); ctx.globalCompositeOperation='lighter'; drawGlow('255,201,222',0,0,18,0.6); ctx.restore();
+    }
+    ctx.fillStyle = filled ? '#FFC9DE' : 'rgba(255,255,255,0.12)';
+    ctx.beginPath();
+    ctx.moveTo(0,size*0.6);
+    ctx.bezierCurveTo(size,size*0.2, size,-size*0.5, 0,-size*0.6);
+    ctx.bezierCurveTo(-size,-size*0.5, -size,size*0.2, 0,size*0.6);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+function drawGlowMeter(){
+  if (state.screen === 'title' || state.screen === 'intro') return;
+  const L = state.layout;
+  const n = CONFIG.GLOW_MAX;
+  const gap = 3;
+  const w = L.glowW, h = 7;
+  const x = L.glowX, y = L.glowY;
+  const segW = (w - (n-1)*gap)/n;
+  ctx.save();
+  ctx.fillStyle = 'rgba(10,30,48,0.8)';
+  rr(x-2, y-2, w+4, h+4, 5); ctx.fill();
+  for (let i=0;i<n;i++){
+    const fill = clamp(state.glow - i, 0, 1);
+    const sx = x + i*(segW+gap);
+    const locked = i >= glowCap();
+    ctx.fillStyle = locked ? 'rgba(255,255,255,0.05)' : 'rgba(79,240,224,0.14)';
+    rr(sx, y, segW, h, 3); ctx.fill();
+    if (locked){
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sx + 3, y + h - 1); ctx.lineTo(sx + segW - 3, y + 1); ctx.stroke();
+    }
+    if (fill > 0){
+      ctx.fillStyle = '#4FF0E0';
+      rr(sx, y, Math.max(1, segW*fill), h, 3); ctx.fill();
+    }
+  }
+  if (state.glow > 0){
+    const edge = x + (state.glow/n)*w;
+    const sh = 0.5 + 0.5*Math.sin(state.time*7);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    drawGlow('79,240,224', edge, y+h/2, 11, 0.3 + 0.25*sh);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(234,251,255,'+(0.5+0.42*sh)+')';
+    ctx.fillRect(edge-0.8, y-1.5, 1.6, h+3);
+  }
+  ctx.restore();
+}
+function hexRgb(hex){
+  const h = hex.replace('#','');
+  if (h.length !== 6) return '255,255,255';
+  return parseInt(h.slice(0,2),16)+','+parseInt(h.slice(2,4),16)+','+parseInt(h.slice(4,6),16);
+}
+function drawPearlTray(){
+  if (state.screen === 'title' || state.screen === 'intro') return;
+  const L = state.layout;
+  const R = L.trayR;
+  const slotFont = "600 8px Sora, system-ui, sans-serif";
+  for (let i=0;i<CONFIG.TRAY_SLOTS;i++){
+    const key = state.pearls[i];
+    const cx = L.trayCx[i], cy = L.trayCy;
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (key){
+      const P = PEARLS[key];
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      drawGlow(hexRgb(P.col), 0, 0, R*0.95, 0.4);
+      ctx.restore();
+      ctx.fillStyle = 'rgba(9,28,46,0.9)';
+      ctx.beginPath(); ctx.arc(0,0,R,0,6.2832); ctx.fill();
+      ctx.strokeStyle = P.col;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(0,0,R,0,6.2832); ctx.stroke();
+      drawGlyph(key, 0, -4, 9, P.col);
+      ctx.fillStyle = P.col;
+      ctx.font = slotFont;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(P.name.toUpperCase(), 0, 16);
+      for (let k=0;k<3;k++){
+        ctx.fillStyle = k < state.pearlLv[i] ? P.col : 'rgba(255,255,255,0.18)';
+        ctx.beginPath(); ctx.arc((k-1)*7, -20, 2.2, 0, 6.2832); ctx.fill();
+      }
+    } else {
+      ctx.fillStyle = 'rgba(10,30,48,0.42)';
+      ctx.beginPath(); ctx.arc(0,0,R,0,6.2832); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(0,0,R,0,6.2832); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0,0,R-5,0,6.2832); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+function drawPearlTimers(){
+  if (state.screen === 'title' || state.screen === 'intro') return;
+  const active = [];
+  if (state.frostUntil > state.time) active.push({ key:'frost', remain:state.frostUntil-state.time, max:state.frostMax });
+  if (state.stormUntil > state.time) active.push({ key:'storm', remain:state.stormUntil-state.time, max:state.stormMax });
+  for (let i=0;i<state.sentries.length;i++){
+    const s = state.sentries[i];
+    if (s.until) active.push({ key:'polyp', remain:s.until-state.time, max:s.max });
+  }
+  for (let i=0;i<active.length && i<6;i++){
+    const a = active[i];
+    const x = state.W - 26 - i*38, y = state.topY + 8;
+    const frac = clamp(a.remain/a.max,0,1);
+    const col = PEARLS[a.key].col;
+    ctx.save();
+    ctx.fillStyle = 'rgba(8,26,42,0.8)';
+    ctx.beginPath(); ctx.arc(x,y,15,0,6.2832); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x,y,13,0,6.2832); ctx.stroke();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x,y,13,-Math.PI/2,-Math.PI/2 + 6.2832*frac); ctx.stroke();
+    drawGlyph(a.key, x, y, 6, col);
+    ctx.restore();
+  }
+}
+function drawGlyph(kind, x, y, s, col){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.strokeStyle = col;
+  ctx.fillStyle = col;
+  ctx.lineWidth = Math.max(1.3, s*0.17);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  switch(kind){
+    case 'sun':
+      ctx.beginPath(); ctx.arc(0,0,s*0.32,0,6.2832); ctx.fill();
+      for (let i=0;i<8;i++){
+        const a = i/8*6.2832;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*s*0.56, Math.sin(a)*s*0.56);
+        ctx.lineTo(Math.cos(a)*s*0.9, Math.sin(a)*s*0.9);
+        ctx.stroke();
+      }
+      break;
+    case 'polyp':
+      ctx.beginPath(); ctx.arc(0,-s*0.34,s*0.34,0,6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-s*0.28,-s*0.02); ctx.quadraticCurveTo(-s*0.5,s*0.45,-s*0.34,s*0.8);
+      ctx.moveTo(0,-s*0.02); ctx.lineTo(0,s*0.82);
+      ctx.moveTo(s*0.28,-s*0.02); ctx.quadraticCurveTo(s*0.5,s*0.45,s*0.34,s*0.8);
+      ctx.stroke();
+      break;
+    case 'frost':
+      for (let i=0;i<3;i++){
+        const a = i*Math.PI/3;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        ctx.beginPath();
+        ctx.moveTo(-dx*s,-dy*s); ctx.lineTo(dx*s,dy*s);
+        ctx.moveTo(dx*s*0.55,dy*s*0.55); ctx.lineTo(dx*s*0.55 - dy*s*0.3, dy*s*0.55 + dx*s*0.3);
+        ctx.moveTo(dx*s*0.55,dy*s*0.55); ctx.lineTo(dx*s*0.55 + dy*s*0.3, dy*s*0.55 - dx*s*0.3);
+        ctx.stroke();
+      }
+      break;
+    case 'undertow':
+      for (let i=-1;i<=1;i++){
+        ctx.beginPath();
+        ctx.moveTo(-s,-i*s*0.42);
+        ctx.quadraticCurveTo(-s*0.35,-i*s*0.42 - s*0.4, 0,-i*s*0.42);
+        ctx.quadraticCurveTo(s*0.35,-i*s*0.42 + s*0.4, s,-i*s*0.42);
+        ctx.stroke();
+      }
+      break;
+    case 'storm':
+      ctx.beginPath();
+      ctx.moveTo(s*0.25,-s);
+      ctx.lineTo(-s*0.55,s*0.1);
+      ctx.lineTo(-s*0.05,s*0.1);
+      ctx.lineTo(-s*0.3,s);
+      ctx.lineTo(s*0.6,-s*0.2);
+      ctx.lineTo(s*0.08,-s*0.2);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'ink':
+      ctx.beginPath(); ctx.arc(-s*0.22,s*0.06,s*0.55,0,6.2832); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.5,-s*0.34,s*0.26,0,6.2832); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.5,s*0.55,s*0.18,0,6.2832); ctx.fill();
+      break;
+    case 'rot':
+      ctx.beginPath(); ctx.arc(0,-s*0.12,s*0.62,0,6.2832); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-s*0.24,-s*0.2,s*0.13,0,6.2832); ctx.arc(s*0.24,-s*0.2,s*0.13,0,6.2832); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-s*0.3,s*0.62); ctx.lineTo(-s*0.15,s*0.38); ctx.lineTo(0,s*0.62); ctx.lineTo(s*0.15,s*0.38); ctx.lineTo(s*0.3,s*0.62); ctx.stroke();
+      break;
+    case 'mend':
+      ctx.beginPath();
+      ctx.moveTo(0,s*0.7);
+      ctx.bezierCurveTo(s*1.02,s*0.16, s,-s*0.62, 0,-s*0.7);
+      ctx.bezierCurveTo(-s,-s*0.62, -s*1.02,s*0.16, 0,s*0.7);
+      ctx.closePath();
+      ctx.fill();
+      break;
+  }
+  ctx.restore();
+}
+function drawRipples(){
+  if (!state.ripples.length) return;
+  ctx.save();
+  for (let i=0;i<state.ripples.length;i++){
+    const r = state.ripples[i];
+    const p = 1 - r.t/r.max;
+    const rad = 10 + r.r*p;
+    const a = clamp(r.t/r.max,0,1);
+    ctx.strokeStyle = 'rgba('+r.rgb+','+(a*0.75)+')';
+    ctx.lineWidth = 2 + 3*a;
+    ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, 6.2832); ctx.stroke();
+    ctx.strokeStyle = 'rgba('+r.rgb+','+(a*0.28)+')';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(r.x, r.y, rad*0.6, 0, 6.2832); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawNameFlash(){
+  const f = state.nameFlash;
+  if (!f || state.screen === 'title' || state.screen === 'intro') return;
+  const age = f.max - f.t;
+  const a = Math.min(1, age/0.12, f.t/0.22);
+  ctx.save();
+  ctx.globalAlpha = clamp(a,0,1);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = "900 34px Unbounded, system-ui, sans-serif";
+  ctx.fillStyle = f.col || '#FFE9F3';
+  ctx.fillText(f.text.toUpperCase(), state.W/2, state.H*0.48);
+  ctx.restore();
+}
+function wrapText(text, maxW, font){
+  ctx.font = font;
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for (let i=0;i<words.length;i++){
+    const test = line ? line+' '+words[i] : words[i];
+    if (ctx.measureText(test).width > maxW && line){
+      lines.push(line);
+      line = words[i];
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+function drawCallout(){
+  const c = state.callout;
+  if (!c || state.screen !== 'playing') return;
+  const W = state.W, H = state.H;
+  const cw = Math.min(CONFIG.CALLOUT_W, W - 28);
+  const pad = 20;
+  const titleFont = "700 22px Unbounded, system-ui, sans-serif";
+  const bodyFont = "400 17px Sora, system-ui, sans-serif";
+  const hintFont = "600 11px Sora, system-ui, sans-serif";
+  const lineH = 23, titleH = 28, hintH = 16;
+  const lines = wrapText(c.text, cw - pad*2, bodyFont);
+  const ch = pad + titleH + 8 + lines.length*lineH + 14 + hintH + pad;
+  const now = performance.now();
+  const a = clamp((now - (c.born || 0))/140, 0, 1);
+  let cx = clamp(c.x - cw/2, 12, Math.max(12, W - cw - 12));
+  let cy = c.y - ch - 30;
+  if (cy < state.topY + 8) cy = c.y + 34;
+  cy = clamp(cy, 12, Math.max(12, H - ch - 12));
+  const tx = clamp(c.x, 4, W-4), ty = clamp(c.y, 4, H-4);
+  const px = clamp(tx, cx, cx+cw);
+  const py = ty < cy ? cy : (ty > cy+ch ? cy+ch : ty);
+
+  ctx.save();
+  // dim the playfield so the card is the only thing to read
+  ctx.fillStyle = 'rgba(2,10,18,0.64)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = a;
+  // pointer line to the thing being described
+  ctx.strokeStyle = 'rgba(79,240,224,0.55)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(tx, ty); ctx.stroke();
+  ctx.fillStyle = 'rgba(79,240,224,0.9)';
+  ctx.beginPath(); ctx.arc(tx, ty, 2.8, 0, 6.2832); ctx.fill();
+  // card
+  ctx.shadowColor = 'rgba(0,0,0,0.55)';
+  ctx.shadowBlur = 26;
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = 'rgba(6,24,40,0.97)';
+  rr(cx, cy, cw, ch, 16); ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = 'rgba(79,240,224,0.5)';
+  ctx.lineWidth = 1.2;
+  rr(cx+0.5, cy+0.5, cw-1, ch-1, 16); ctx.stroke();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#FFD76A';
+  ctx.font = titleFont;
+  ctx.fillText(c.title, cx+pad, cy+pad);
+  ctx.fillStyle = '#CBE6F5';
+  ctx.font = bodyFont;
+  for (let i=0;i<lines.length;i++){
+    ctx.fillText(lines[i], cx+pad, cy+pad+titleH+8+i*lineH);
+  }
+  // hint
+  ctx.globalAlpha = a * (0.62 + 0.22*Math.sin(now/450));
+  ctx.fillStyle = '#6FA6C4';
+  ctx.font = hintFont;
+  ctx.textAlign = 'center';
+  ctx.fillText('Tap to continue', cx+cw/2, cy+ch-pad-hintH+3);
+  ctx.restore();
+}
+function drawBanner(){
+  if (!state.banner) return;
+  const b = state.banner;
+  const t = 1 - b.t/b.max;
+  const a = b.t > b.max-0.3 ? (b.max-b.t)/0.3 : (b.t < 0.4 ? b.t/0.4 : 1);
+  ctx.save();
+  ctx.globalAlpha = clamp(a,0,1);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font = "900 40px Unbounded, system-ui, sans-serif";
+  ctx.fillStyle = '#EAFBFF';
+  ctx.shadowColor = 'rgba(79,240,224,0.6)';
+  ctx.fillText(b.text, state.W/2, state.H*0.42);
+  ctx.restore();
+}
+
+/* ============================ SCREENS ============================ */
+function showScreen(name){
+  if (name === 'playing') Audio_.resume(); else Audio_.pause();
+  titleEl.classList.toggle('hidden', name !== 'title');
+  pauseEl.classList.toggle('hidden', name !== 'paused');
+  overEl.classList.toggle('hidden', name !== 'gameover');
+  guideEl.classList.toggle('hidden', name !== 'guide');
+  introEl.classList.toggle('hidden', name !== 'intro');
+  boonEl.classList.toggle('hidden', name !== 'boon');
+  hudEl.classList.toggle('hidden', name === 'title' || name === 'guide' || name === 'intro');
+  if (name === 'title' || name === 'guide' || name === 'intro') bossbarEl.classList.add('hidden');
+  else if (name !== 'gameover' && name !== 'paused') bossbarEl.classList.toggle('hidden', !state.boss);
+}
+// Title: card 0 is today's dive, cards 1-4 are the vents in unlock order. The centred card is the choice.
+const VENT_TINT = { lantern:'79,240,224', needle:'169,236,255', spore:'143,247,210', tidecaller:'127,168,255' };
+const DIVE_KEYS = ['daily'].concat(Object.keys(VENT_DEFS));
+let diveIdx = -1;
+function buildDiveCards(){
+  const list = $('diveList'), dots = $('diveDots');
+  list.innerHTML = ''; dots.innerHTML = '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now = new Date();
+  DIVE_KEYS.forEach(function(key, i){
+    const card = document.createElement('div');
+    card.className = 'dcard';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    if (key === 'daily'){
+      const best = save.bestDaily.date === todayStr() ? "Today's best " + save.bestDaily.score + (save.bestDaily.medal ? ' · ' + save.bestDaily.medal : '') : 'Medals at zone 3, 5 and 7';
+      card.style.setProperty('--tint', '255,215,106');
+      card.innerHTML = '<div class="dnum">'+now.getDate()+'</div>'+
+        '<div class="deye">Today · '+now.getDate()+' '+months[now.getMonth()]+'</div>'+
+        '<div class="dname">Daily dive</div><div class="drole">Same dive for everyone</div>'+
+        '<div class="dmods">'+dailyMods().map(function(k){ return '<div class="dmod"><b>'+DAILY_MODS[k].name+'</b>'+DAILY_MODS[k].desc+'</div>'; }).join('')+'</div>'+
+        '<div class="dfoot">'+best+' · with '+VENT_DEFS[save.vent].name+'</div>';
+      card.setAttribute('aria-label', 'Daily dive');
+    } else {
+      const v = VENT_DEFS[key];
+      const unlocked = save.unlocked.indexOf(key) >= 0;
+      if (!unlocked) card.classList.add('locked');
+      card.style.setProperty('--tint', VENT_TINT[key]);
+      card.innerHTML = '<div class="dnum">'+i+'</div>'+
+        '<div class="deye">Vent '+i+' of '+(DIVE_KEYS.length-1)+'</div>'+
+        '<div class="dname">'+v.name+'</div><div class="drole">'+v.role+'</div>'+
+        '<div class="dtext">'+v.desc+'</div>'+
+        '<div class="dfoot">'+(unlocked ? (save.bestBy[key] ? 'Best ' + save.bestBy[key] + ' \u00b7 ' + (save.depthBy[key] || 0) + 'm' : 'No dive yet') : 'Locked \u00b7 ' + v.cond)+'</div>';
+      card.setAttribute('aria-label', 'Vent ' + i + ', ' + v.name);
+    }
+    card.addEventListener('click', function(){ scrollToDive(i, true); });
+    card.addEventListener('keydown', function(ev){
+      if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft'){ ev.preventDefault(); scrollToDive(clamp(diveIdx + (ev.key === 'ArrowRight' ? 1 : -1), 0, DIVE_KEYS.length-1), true); }
+      else if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); scrollToDive(i, true); }
+    });
+    list.appendChild(card);
+    const d = document.createElement('button');
+    d.className = key === 'daily' ? 'day' : '';
+    d.setAttribute('aria-label', key === 'daily' ? 'Daily dive' : VENT_DEFS[key].name);
+    d.addEventListener('click', function(){ scrollToDive(i, true); });
+    dots.appendChild(d);
+  });
+  const start = diveIdx >= 0 ? diveIdx : (state.daily ? 0 : DIVE_KEYS.indexOf(save.vent));
+  diveIdx = -1;
+  requestAnimationFrame(function(){ scrollToDive(start, false); });
+  selectDive(start);
+}
+function diveStep(){
+  const list = $('diveList'), c = list.firstElementChild;
+  return c ? c.offsetWidth + 12 : 1;
+}
+function scrollToDive(i, smooth){
+  $('diveList').scrollTo({ left: i*diveStep(), behavior: smooth && !reduceMotion ? 'smooth' : 'auto' });
+  selectDive(i);
+}
+function selectDive(i){
+  if (i === diveIdx) return;
+  diveIdx = i;
+  const key = DIVE_KEYS[i];
+  const cards = $('diveList').children, dots = $('diveDots').children;
+  for (let k=0;k<cards.length;k++){ cards[k].classList.toggle('on', k === i); dots[k].classList.toggle('on', k === i); }
+  const play = $('btnPlay');
+  play.classList.toggle('day', key === 'daily');
+  if (key === 'daily'){
+    state.daily = true;
+    play.disabled = false; play.textContent = 'Dive today';
+  } else if (save.unlocked.indexOf(key) >= 0){
+    state.daily = false;
+    if (save.vent !== key){ save.vent = key; persist(); }
+    play.disabled = false; play.textContent = 'Dive';
+  } else {
+    play.disabled = true; play.textContent = 'Locked';
+  }
+}
+$('diveList').addEventListener('scroll', function(){
+  selectDive(clamp(Math.round($('diveList').scrollLeft / diveStep()), 0, DIVE_KEYS.length-1));
+}, { passive:true });
+function updateTitleExtras(){
+  buildDiveCards();
+}
+function buildGuide(){
+  const list = $('guideList');
+  list.innerHTML = '';
+  let sec = '';
+  for (let i=0;i<GUIDE_ENTRIES.length;i++){
+    const e = GUIDE_ENTRIES[i];
+    if (e.sec !== sec){
+      sec = e.sec;
+      const h = document.createElement('div');
+      h.className = 'gSec';
+      h.textContent = sec;
+      list.appendChild(h);
+    }
+    const seen = save.seen.indexOf(e.id) >= 0;
+    const row = document.createElement('div');
+    row.className = 'gEntry' + (seen ? '' : ' unseen');
+    const n = document.createElement('div');
+    n.className = 'gName';
+    n.textContent = seen ? e.name : '???';
+    const t = document.createElement('div');
+    t.className = 'gText';
+    t.textContent = seen ? e.text : '???';
+    row.appendChild(n); row.appendChild(t);
+    list.appendChild(row);
+  }
+}
+const INTRO_CARDS = [
+  {
+    title: 'Hold the reef',
+    text: 'Creatures of the deep drift down three lanes. You fire automatically. Swipe to switch lanes. Every creature that reaches the reef costs a shell.',
+    svg: '<svg viewBox="0 0 280 150">' +
+      '<defs><radialGradient id="ia1" cx="50%" cy="50%" r="50%">' +
+      '<stop offset="0" stop-color="#4FF0E0" stop-opacity=".55"/><stop offset="1" stop-color="#4FF0E0" stop-opacity="0"/></radialGradient></defs>' +
+      '<rect x="2" y="0" width="92" height="142" fill="#BEF0FF" fill-opacity=".04"/>' +
+      '<rect x="94" y="0" width="92" height="142" fill="#78C8E6" fill-opacity=".015"/>' +
+      '<rect x="186" y="0" width="92" height="142" fill="#BEF0FF" fill-opacity=".04"/>' +
+      '<line x1="93.5" y1="0" x2="93.5" y2="142" stroke="#1B3A5C"/>' +
+      '<line x1="186.5" y1="0" x2="186.5" y2="142" stroke="#1B3A5C"/>' +
+      '<circle cx="140" cy="120" r="36" fill="url(#ia1)"/>' +
+      '<path d="M140 100 C155 106 158 128 140 138 C122 128 119 106 140 100Z" fill="#4FF0E0"/>' +
+      '<ellipse cx="140" cy="118" rx="6" ry="9" fill="#FFFFFF"/>' +
+      '<circle cx="137" cy="112" r="2" fill="#04121F"/><circle cx="143" cy="112" r="2" fill="#04121F"/>' +
+      '<path d="M116 126 L106 120 L116 114" fill="none" stroke="#FFD76A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M164 126 L174 120 L164 114" fill="none" stroke="#FFD76A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<g transform="translate(66 44)">' +
+      '<path d="M-15 0 A15 15 0 0 1 15 0 Z" fill="#FF6A3D"/>' +
+      '<path d="M-10 2 Q-11 13 -8 19 M-4 2 Q-5 13 -3 19 M4 2 Q5 13 3 19 M10 2 Q11 13 8 19" fill="none" stroke="#FF2E63" stroke-width="1.7" stroke-linecap="round"/>' +
+      '<circle cx="0" cy="-4" r="2.2" fill="#FFE9B8"/></g>' +
+      '<g transform="translate(214 76) scale(.8)">' +
+      '<path d="M-15 0 A15 15 0 0 1 15 0 Z" fill="#FF6A3D"/>' +
+      '<path d="M-10 2 Q-11 13 -8 19 M-4 2 Q-5 13 -3 19 M4 2 Q5 13 3 19 M10 2 Q11 13 8 19" fill="none" stroke="#FF2E63" stroke-width="1.7" stroke-linecap="round"/>' +
+      '<circle cx="0" cy="-4" r="2.2" fill="#FFE9B8"/></g>' +
+      '<rect x="10" y="140" width="260" height="3" rx="1.5" fill="#4FF0E0" fill-opacity=".45"/>' +
+      '</svg>'
+  },
+  {
+    title: 'Glow',
+    text: 'Shoot a gate to claim it. Glow gates make your shots stronger, but Glow fades, so keep claiming. Leave a gate alone and every creature passing through it is copied.',
+    svg: '<svg viewBox="0 0 280 150">' +
+      '<defs><radialGradient id="ia2" cx="50%" cy="50%" r="50%">' +
+      '<stop offset="0" stop-color="#FFD76A" stop-opacity=".5"/><stop offset="1" stop-color="#FFD76A" stop-opacity="0"/></radialGradient></defs>' +
+      '<rect x="2" y="0" width="92" height="142" fill="#BEF0FF" fill-opacity=".04"/>' +
+      '<rect x="94" y="0" width="92" height="142" fill="#78C8E6" fill-opacity=".015"/>' +
+      '<rect x="186" y="0" width="92" height="142" fill="#BEF0FF" fill-opacity=".04"/>' +
+      '<line x1="93.5" y1="0" x2="93.5" y2="142" stroke="#1B3A5C"/>' +
+      '<line x1="186.5" y1="0" x2="186.5" y2="142" stroke="#1B3A5C"/>' +
+      '<ellipse cx="140" cy="62" rx="118" ry="36" fill="url(#ia2)"/>' +
+      '<rect x="46" y="44" width="188" height="36" rx="10" fill="#FFD76A" fill-opacity=".12" stroke="#FFD76A" stroke-width="1.6"/>' +
+      '<circle cx="72" cy="62" r="3.2" fill="#FFD76A"/>' +
+      '<g transform="translate(72 62)" stroke="#FFD76A" stroke-width="1.6" stroke-linecap="round">' +
+      '<line x1="8" y1="0" x2="13" y2="0"/><line x1="-8" y1="0" x2="-13" y2="0"/>' +
+      '<line x1="0" y1="8" x2="0" y2="13"/><line x1="0" y1="-8" x2="0" y2="-13"/>' +
+      '<line x1="5.7" y1="5.7" x2="9.2" y2="9.2"/><line x1="-5.7" y1="-5.7" x2="-9.2" y2="-9.2"/>' +
+      '<line x1="5.7" y1="-5.7" x2="9.2" y2="-9.2"/><line x1="-5.7" y1="5.7" x2="-9.2" y2="9.2"/></g>' +
+      '<rect x="92" y="54" width="58" height="5" rx="2.5" fill="#FFF2CF" fill-opacity=".8"/>' +
+      '<rect x="92" y="66" width="128" height="4" rx="2" fill="#04121F" fill-opacity=".7"/>' +
+      '<rect x="92" y="66" width="88" height="4" rx="2" fill="#FFD76A"/>' +
+      '<g fill="#FFFFFF"><ellipse cx="140" cy="104" rx="3" ry="5"/><ellipse cx="140" cy="119" rx="3" ry="5"/><ellipse cx="140" cy="134" rx="3" ry="5"/></g>' +
+      '<g stroke="#B8FFF2" stroke-opacity=".4" stroke-width="2"><line x1="140" y1="111" x2="140" y2="117"/><line x1="140" y1="126" x2="140" y2="132"/></g>' +
+      '</svg>'
+  },
+  {
+    title: 'Pearls and bosses',
+    text: 'Pearl gates give you an item. Tap it in the tray to use it when things get tight. A boss waits at the end of every zone.',
+    svg: '<svg viewBox="0 0 280 150">' +
+      '<defs><radialGradient id="ia3" cx="50%" cy="50%" r="50%">' +
+      '<stop offset="0" stop-color="#FFC9DE" stop-opacity=".5"/><stop offset="1" stop-color="#FFC9DE" stop-opacity="0"/></radialGradient></defs>' +
+      '<rect x="2" y="0" width="92" height="142" fill="#BEF0FF" fill-opacity=".04"/>' +
+      '<rect x="94" y="0" width="92" height="142" fill="#78C8E6" fill-opacity=".015"/>' +
+      '<rect x="186" y="0" width="92" height="142" fill="#BEF0FF" fill-opacity=".04"/>' +
+      '<line x1="93.5" y1="0" x2="93.5" y2="142" stroke="#1B3A5C"/>' +
+      '<line x1="186.5" y1="0" x2="186.5" y2="142" stroke="#1B3A5C"/>' +
+      '<g transform="translate(204 30)" fill="none" stroke="#7928CA" stroke-width="2.6">' +
+      '<circle r="22"/><circle r="13" stroke-opacity=".7"/><circle r="5" stroke-opacity=".5"/></g>' +
+      '<circle cx="204" cy="30" r="4" fill="#FF2E63"/>' +
+      '<rect x="36" y="52" width="188" height="34" rx="10" fill="#FFE9F3" fill-opacity=".12" stroke="#FFE9F3" stroke-width="1.6"/>' +
+      '<circle cx="60" cy="69" r="7.5" fill="#FFC9DE"/>' +
+      '<circle cx="60" cy="69" r="3" fill="#FFF4FA"/>' +
+      '<rect x="80" y="62" width="54" height="5" rx="2.5" fill="#FFF4FA" fill-opacity=".8"/>' +
+      '<rect x="80" y="74" width="120" height="4" rx="2" fill="#04121F" fill-opacity=".7"/>' +
+      '<rect x="80" y="74" width="76" height="4" rx="2" fill="#FFC9DE"/>' +
+      '<circle cx="140" cy="126" r="32" fill="url(#ia3)"/>' +
+      '<circle cx="104" cy="126" r="15" fill="#091C2E" stroke="#FFC9DE" stroke-width="1.6"/>' +
+      '<circle cx="104" cy="126" r="5" fill="#FFC9DE"/>' +
+      '<circle cx="140" cy="126" r="15" fill="#091C2E" stroke="#A9ECFF" stroke-width="1.6"/>' +
+      '<circle cx="140" cy="126" r="5" fill="#A9ECFF"/>' +
+      '<circle cx="176" cy="126" r="15" fill="#0A1E30" fill-opacity=".6" stroke="#FFFFFF" stroke-opacity=".16"/>' +
+      '</svg>'
+  }
+];
+let introIndex = 0, introFromPlay = false, introDaily = false, introSwipe = null;
+function renderIntro(){
+  const card = INTRO_CARDS[introIndex];
+  $('introArt').innerHTML = card.svg;
+  $('introTitle').textContent = card.title;
+  $('introText').textContent = card.text;
+  const dots = $('introDots');
+  dots.innerHTML = '';
+  for (let i=0;i<INTRO_CARDS.length;i++){
+    const d = document.createElement('i');
+    if (i === introIndex) d.className = 'on';
+    dots.appendChild(d);
+  }
+  $('btnIntroNext').textContent = introIndex === INTRO_CARDS.length-1 ? 'Dive' : 'Next';
+}
+function showIntro(fromPlay, daily){
+  if (BOT) return;
+  introFromPlay = !!fromPlay;
+  introDaily = daily == null ? state.daily : daily;
+  introIndex = 0;
+  introSwipe = null;
+  renderIntro();
+  state.screen = 'intro';
+  showScreen('intro');
+}
+function introNext(){
+  if (introIndex < INTRO_CARDS.length-1){ introIndex++; renderIntro(); return; }
+  finishIntro();
+}
+function introPrev(){
+  if (introIndex > 0){ introIndex--; renderIntro(); }
+}
+function finishIntro(){
+  introSwipe = null;
+  markSeen('intro');
+  if (introFromPlay) startRun(introDaily);
+  else { state.screen = 'title'; showScreen('title'); updateTitleExtras(); }
+}
+function updateMuteUI(){
+  const icon = '<svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/>' +
+    (save.muted ? '<path d="M16 9.5l5 5M21 9.5l-5 5"/>' : '<path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/>') + '</svg>';
+  const label = save.muted ? 'Sound off, tap to turn on' : 'Sound on, tap to mute';
+  ['btnMuteTitle','btnMute'].forEach(function(id){
+    $(id).innerHTML = icon;
+    $(id).setAttribute('aria-label', label);
+    $(id).title = label;
+  });
+}
+
+/* ============================ INPUT ============================ */
+let gesture = null;
+function pearlSlotAt(x, y){
+  const L = state.layout;
+  const rr2 = (L.trayR + 4)*(L.trayR + 4);
+  for (let i=0;i<CONFIG.TRAY_SLOTS;i++){
+    const dx = x - L.trayCx[i], dy = y - L.trayCy;
+    if (dx*dx + dy*dy <= rr2) return i;
+  }
+  return -1;
+}
+function moveLane(dir){
+  state.player.lane = clamp(state.player.lane + dir, 0, CONFIG.LANES-1);
+}
+canvas.addEventListener('pointerdown', function(ev){
+  Audio_.ensure(); Audio_.resume();
+  if (state.screen !== 'playing') return;
+  if (state.callout){ dismissCallout(); gesture = null; return; }
+  const slot = pearlSlotAt(ev.clientX, ev.clientY);
+  if (slot >= 0){
+    if (state.pearls[slot]) usePearl(slot);
+    gesture = null;
+    return;
+  }
+  gesture = { anchorX: ev.clientX, startX: ev.clientX, t0: performance.now(), changed: false };
+  try { canvas.setPointerCapture(ev.pointerId); } catch(e){}
+});
+canvas.addEventListener('pointermove', function(ev){
+  if (!gesture || state.screen !== 'playing' || state.callout) return;
+  const threshold = Math.max(28, 0.12*laneW());
+  const dx = ev.clientX - gesture.anchorX;
+  if (Math.abs(dx) >= threshold){
+    moveLane(dx > 0 ? 1 : -1);
+    gesture.anchorX = ev.clientX;
+    gesture.changed = true;
+  }
+});
+window.addEventListener('pointerup', function(ev){
+  if (!gesture) return;
+  const g = gesture;
+  gesture = null;
+  if (state.screen !== 'playing' || state.callout) return;
+  if (!g.changed && performance.now() - g.t0 <= 250 && Math.abs(ev.clientX - g.startX) > 18){
+    moveLane(ev.clientX > g.startX ? 1 : -1);
+  }
+});
+window.addEventListener('pointercancel', function(){ gesture = null; });
+window.addEventListener('keydown', function(ev){
+  if (state.screen !== 'playing') return;
+  if (state.callout){
+    if (ev.key === ' ' || ev.key === 'Spacebar' || ev.key === 'Enter'){
+      ev.preventDefault();
+      dismissCallout();
+    }
+    return;
+  }
+  if (ev.key === 'ArrowLeft'){ state.player.lane = clamp(state.player.lane-1,0,CONFIG.LANES-1); }
+  else if (ev.key === 'ArrowRight'){ state.player.lane = clamp(state.player.lane+1,0,CONFIG.LANES-1); }
+});
+window.addEventListener('keydown', function(ev){
+  if (state.screen !== 'intro') return;
+  if (ev.key === 'ArrowRight'){ ev.preventDefault(); introNext(); }
+  else if (ev.key === 'ArrowLeft'){ ev.preventDefault(); introPrev(); }
+  else if (ev.key === 'Escape'){ ev.preventDefault(); finishIntro(); }
+});
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden && state.screen === 'playing'){ state.screen='paused'; showScreen('paused'); }
+});
+$('btnPlay').addEventListener('click', function(){
+  if (BOT || save.seen.indexOf('intro') >= 0){ startRun(state.daily); return; }
+  showIntro(true, state.daily);
+});
+$('btnHowto').addEventListener('click', function(){ showIntro(false, state.daily); });
+$('btnIntroNext').addEventListener('click', function(ev){ ev.stopPropagation(); introNext(); });
+$('btnIntroSkip').addEventListener('click', function(ev){ ev.stopPropagation(); finishIntro(); });
+introEl.addEventListener('pointerdown', function(ev){
+  if (state.screen !== 'intro') return;
+  if (ev.target && ev.target.closest && ev.target.closest('button')) return;
+  introSwipe = { x:ev.clientX, t:performance.now() };
+});
+introEl.addEventListener('pointerup', function(ev){
+  if (state.screen !== 'intro' || !introSwipe) return;
+  const g = introSwipe;
+  introSwipe = null;
+  const dx = ev.clientX - g.x;
+  if (Math.abs(dx) < 40 || performance.now() - g.t > 900) return;
+  if (dx < 0) introNext(); else introPrev();
+});
+window.addEventListener('pointercancel', function(){ introSwipe = null; });
+$('btnGuide').addEventListener('click', function(){
+  state.screen = 'guide';
+  buildGuide();
+  showScreen('guide');
+});
+$('btnGuideClose').addEventListener('click', function(){
+  state.screen = 'title';
+  showScreen('title');
+  updateTitleExtras();
+});
+$('btnResetTips').addEventListener('click', function(){
+  // Also clears the `intro` flag, so the intro plays again before the next run.
+  save.seen = [];
+  persist();
+  buildGuide();
+});
+$('btnMuteTitle').addEventListener('click', function(){
+  save.muted = !save.muted; persist(); Audio_.setMuted(save.muted); updateMuteUI();
+});
+$('btnMute').addEventListener('click', function(){
+  save.muted = !save.muted; persist(); Audio_.setMuted(save.muted); updateMuteUI();
+});
+$('btnPause').addEventListener('click', function(){
+  if (state.screen === 'playing'){ state.screen='paused'; showScreen('paused'); }
+});
+$('btnResume').addEventListener('click', function(ev){ ev.stopPropagation(); if (state.screen==='paused'){ state.screen='playing'; showScreen('playing'); } });
+$('btnQuit').addEventListener('click', function(ev){ ev.stopPropagation(); state.screen='title'; showScreen('title'); updateTitleExtras(); });
+pauseEl.addEventListener('click', function(){ if (state.screen==='paused'){ state.screen='playing'; showScreen('playing'); } });
+$('btnRetry').addEventListener('click', function(){ startRun(state.daily); });
+let shareText = '';
+$('btnShare').addEventListener('click', function(){
+  try {
+    navigator.clipboard.writeText(shareText).then(function(){ $('btnShare').textContent = 'Copied'; }, function(){ $('btnShare').textContent = shareText; });
+  } catch(e){ $('btnShare').textContent = shareText; }
+});
+$('btnMenu').addEventListener('click', function(){ state.screen='title'; showScreen('title'); updateTitleExtras(); });
+let swallowClick = false;
+window.addEventListener('pointerdown', function(ev){
+  Audio_.ensure(); Audio_.resume();
+  if (state.screen === 'playing' && state.callout){
+    // The dismissing tap must not also move the player, use a pearl or hit a button.
+    dismissCallout();
+    gesture = null;
+    swallowClick = true;
+    setTimeout(function(){ swallowClick = false; }, 500);
+    ev.preventDefault();
+    ev.stopPropagation();
+  } else {
+    swallowClick = false;
+  }
+}, true);
+window.addEventListener('click', function(ev){
+  if (!swallowClick) return;
+  swallowClick = false;
+  ev.preventDefault();
+  ev.stopPropagation();
+}, true);
+
+/* ============================ BOT AUTOSTART ============================ */
+let botRetryAt = 0;
+function botTick(dt){
+  if (!BOT) return;
+  if (state.screen === 'title'){ startRun(state.daily); }
+  else if (state.screen === 'gameover'){ botRetryAt += dt; if (botRetryAt > 1.5){ botRetryAt = 0; startRun(state.daily); } }
+}
+
+/* ============================ LOOP ============================ */
+let last = performance.now();
+let lastDraw = -1e9;
+function frame(now){
+  requestAnimationFrame(frame);
+  // Cap at 60 fps in play (120 Hz phones would otherwise draw twice as often) and 20 fps elsewhere.
+  const active = state.screen === 'playing' && !state.callout;
+  const pnow = performance.now();
+  if (pnow - lastDraw < (active ? 1000/60 : 1000/20) - 2) return;
+  lastDraw = pnow;
+  let dt = (now - last)/1000;
+  last = now;
+  if (!isFinite(dt) || dt < 0) dt = 0;
+  if (dt > 0.05) dt = 0.05;
+  const frozen = state.screen === 'playing' && !!state.callout;
+  if (state.nameFlash && !frozen){ state.nameFlash.t -= dt; if (state.nameFlash.t <= 0) state.nameFlash = null; }
+  if (state.screen === 'playing'){
+    // A callout hard-pauses the run; no time passes until it is dismissed.
+    if (!state.callout) update(dt);
+  } else {
+    state.time += dt;
+    updateAmbience(dt);
+    updateParticles(dt);
+    updateToasts(dt);
+  }
+  render();
+  botTick(dt);
+}
+
+/* ============================ INIT ============================ */
+window.GT = {
+  CONFIG: CONFIG,
+  get state(){ return state; },
+  VENT_DEFS: VENT_DEFS,
+  ENEMY_TYPES: ENEMY_TYPES,
+  PEARLS: PEARLS,
+  GLOW_TIERS: GLOW_TIERS
+};
+loadSave();
+Audio_.muted = save.muted;
+resize();
+
+updateTitleExtras();
+updateMuteUI();
+showScreen('title');
+requestAnimationFrame(frame);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>

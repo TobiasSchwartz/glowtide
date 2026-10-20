@@ -1,0 +1,15 @@
+{
+  "name": "Glowtide",
+  "short_name": "Glowtide",
+  "description": "Three-lane bioluminescent horde defense for one thumb.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#04121F",
+  "theme_color": "#04121F",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
