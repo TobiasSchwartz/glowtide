@@ -253,10 +253,10 @@ const CONFIG = {
   GLOW_GRACE: 2,
   LEAK_GLOW: 0.35,
   GLOW_OVERFLOW_SCORE: 250,
-  GLOW_TIER_RATE: 1.35,
+  GLOW_TIER_RATE: 1.25,
   GLOW_FULL_EVERY: 3,
+  GLOW_TWIN_EVERY: 2, // Twin shot adds a bullet to every Nth volley
   SHADE_DRAIN: 1,
-  SHADE_RANGE: 0.25,
   POLYP_RATE_MUL: 0.7,
   FROST_SLOW: 0.5,
   FROST_BOSS_SLOW: 0.25,
@@ -264,23 +264,26 @@ const CONFIG = {
   DEEP_RANGE: 0.3,
   PET_MAX: 2,
   PET_RATE: 3,
+  PET_LIFE: 30,
   DEEP_SCORE: 500,
   TRAY_SLOTS: 3,
   TRAY_SLOT_R: 30,
   TRAY_GAP: 6,
   CALLOUT_W: 300,
-  WAVE_INTERVAL: 5,
-  WAVE_INTERVAL_DEC: 0.5,
-  WAVE_INTERVAL_MIN: 2.5,
+  WAVE_INTERVAL: 6,
+  WAVE_INTERVAL_DEC: 0.25,
+  WAVE_INTERVAL_MIN: 4.5,
   WAVE_SPACING: 0.15,
-  WAVE_SIZE_MUL: 1.4,
-  ZONE1_WAVE_MUL: 0.75,
+  WAVE_WARN: 1.5,
+  WAVE_SIZE_MUL: 1.5,
+  ZONE1_WAVE_MUL: 0.7,
   WAVE_SIZE_BASE: 3,
   WAVE_SIZE_TZONE_STEP: 20,
   KRILL_CLUSTER: 4,
   KRILL_CLUSTER_GAP: 6,
   ZONE_DURATION: 60,
-  HP_SCALE: 0.6,
+  HP_SCALE: 0.2,
+  HP_SCALE_SQ: 0.02,
   LEAK_BURST_RANGE: 0.22,
   LEAK_BURST_DMG: 6,
   MAELSTROM_HP: 45,
@@ -300,7 +303,7 @@ const CONFIG = {
 
 const VENT_DEFS = {
   lantern: { name:'Lantern', role:'The Keeper', desc:'Fast stream. The Glow vent: Glow never fades below I and reaches Full Bloom (IV).', cond:'default', glowMax:4, fireRate:10, dmg:1, pierce:0, bullets:1, spread:0 },
-  needle: { name:'Needle', role:'The Hunter', desc:'Heavy piercing shots. Glow caps at II. No Glow gates: every gate holds a pearl, and big kills feed Glow.', cond:'reach zone 2', glowMax:2, fireRate:3.2, dmg:2.75, pierce:1, bullets:1, spread:0 },
+  needle: { name:'Needle', role:'The Hunter', desc:'Heavy piercing shots. Glow caps at II. No Glow gates: every gate holds a pearl, and big kills feed Glow.', cond:'reach zone 2', glowMax:2, fireRate:3.2, dmg:3, pierce:1, bullets:1, spread:0 },
   spore: { name:'Spore', role:'The Gardener', desc:'3-shot fan. Glow caps at III. Every 5th kill plants a sentry in that lane.', cond:'claim 6 gates in one run', glowMax:3, fireRate:4.3, dmg:1, pierce:0, bullets:3, spread:13 },
   tidecaller: { name:'Tidecaller', role:'The Tide', desc:'The tide turns every 10 s. Ebb: creatures slow, gates charge double, Glow holds. Flood: creatures rush, you fire faster, Glow drains fast.', cond:'beat 2 bosses in one run', glowMax:4, fireRate:8.5, dmg:1, pierce:0, bullets:1, spread:0, slow:0.2 }
 };
@@ -357,8 +360,7 @@ const BOONS = {
   side:   { name:'Side vents',    max:3, lab:'Shots into both other lanes', v:function(n){ return 'every ' + ['','4th','3rd','2nd'][n] + ' volley'; } },
   mend:   { name:'Mend the reef', max:99, once:true, fx:function(){ return 'refill all shells now'; } },
   bright: { name:'Brighter vent', max:1, rare:true, fx:function(){ return 'your Glow can reach one tier higher'; } },
-  hatch:  { name:'Hatchling',     max:99, rare:true, once:true, fx:function(){ return 'a hatchling joins you now'; } },
-  bloom:  { name:'Early bloom',   max:1, rare:true, fx:function(){ return 'new gates start one dot riper'; } }
+  hatch:  { name:'Old souls',     max:2, rare:true, lab:'Hatchlings stay', v:function(n){ return '+' + 50*n + '%'; } }
 };
 
 const GUIDE_ENTRIES = [
@@ -367,13 +369,13 @@ const GUIDE_ENTRIES = [
   { sec:'Enemies', id:'enemy:darter',   name:'Darter',   text:'Fast, and it jumps lanes.' },
   { sec:'Enemies', id:'enemy:bulwark',  name:'Bulwark',  text:'Armoured. Costs 2 shells if it gets through.' },
   { sec:'Enemies', id:'enemy:splitter', name:'Splitter', text:'Bursts into krill when killed.' },
-  { sec:'Enemies', id:'enemy:shade',    name:'Shade',    text:'Drains your Glow when it gets close.' },
+  { sec:'Enemies', id:'enemy:shade',    name:'Shade',    text:'If it gets through, it drains a whole Glow tier.' },
   { sec:'Bosses',  id:'boss:maelstrom', name:'Maelstrom', text:'Three heads share one health bar. Break all three.' },
   { sec:'Bosses',  id:'boss:angler',    name:'Angler King', text:'It shifts lanes before it strikes. Watch the red lure.' },
   { sec:'Gates',   id:'gate:glow',      name:'Glow gate', text:'Shoot it to power up your shots. Glow fades over time.' },
   { sec:'Gates',   id:'gate:pearl',     name:'Pearl gate', text:'Shoot it to store a pearl. Tap the pearl below to use it.' },
   { sec:'Gates',   id:'gate:ripe',      name:'Ripe gate', text:'Gates ripen while they drift (the dots). Ripe Glow gates give more Glow, ripe pearls are level II or III. Creatures passing through eat a dot first, then get copied.' },
-  { sec:'Gates',   id:'gate:deep',      name:'Deep claim', text:'Claim a fully ripe gate (3 dots) below the deep line and it hatches a hatchling that shoots beside you. Up to 2. Each leak scares one away.' },
+  { sec:'Gates',   id:'gate:deep',      name:'Deep claim', text:'Claim a fully ripe gate (3 dots) below the deep line and it hatches a hatchling that shoots beside you for 30 s. Up to 2; another deep claim renews the older one. Each leak scares one away.' },
   { sec:'Pearls',  id:'tray:full',      name:'Tray full', text:'With all three slots taken, a new pearl is lost. A pearl you already hold levels up instead (up to III).' },
   { sec:'Gates',   id:'gate:rot',       name:'Rotten gate', text:'Worth +2 Glow, but the creatures caged inside break free when you claim it. Leave it alone and nothing happens.' },
   { sec:'Pearls',  id:'pearl:polyp',    name:'Polyp',    text:PEARLS.polyp.desc },
@@ -402,6 +404,8 @@ function mulberry32(a){
 }
 function hashStr(s){ let h = 2166136261; for (let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function todayStr(){ const d = new Date(); const m = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0'); return d.getFullYear()+'-'+m+'-'+dd; }
+// Visual-only randomness; gameplay draws from state.rng so the daily seed gives everyone the same run.
+const fx = Math.random;
 function mixArr(a,b,t){ return a.map((v,i)=>Math.round(v+(b[i]-v)*t)); }
 
 /* ============================ DOM ============================ */
@@ -495,14 +499,14 @@ const state = {
   zone:1, tZone:0, phase:'waves',
   waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, mods:[], vent:'lantern', gardenKills:0, flood:false,
   glow:0, glowTier:0, glowGraceUntil:0, glowToastAt:-99, pearls:[null,null,null],
-  frostUntil:0, stormUntil:0, frostMax:1, stormMax:1, stormLv:1, pearlLv:[0,0,0], pets:0, petCd:0, gateRetry:0,
+  frostUntil:0, stormUntil:0, frostMax:1, stormMax:1, stormLv:1, pearlLv:[0,0,0], pets:[], petCd:0, gateRetry:0,
   volleyIndex:0, fireCd:0,
   shake:0, laneFlash:[0,0,0], dangerFlash:0,
   toasts:[], banner:null, nameFlash:null,
   callout:null, calloutQueue:[], ripples:[],
   layout:{ safeB:0, shellY:0, shellGap:26, trayCx:[0,0,0], trayCy:0, trayR:CONFIG.TRAY_SLOT_R, glowX:14, glowY:0, glowW:160 },
   ambience:[],
-  stats:{ fireRate:VENT_DEFS.lantern.fireRate, damage:1, pierce:0, bullets:1, spread:0, slow:0, gateChargeMul:1 }
+  stats:{ fireRate:VENT_DEFS.lantern.fireRate, damage:1, pierce:0, bullets:1, twin:false, spread:0, slow:0, gateChargeMul:1 }
 };
 const save = { best:0, bestBy:{}, depthBy:{}, bestDaily:{ date:'', score:0 }, unlocked:['lantern'], vent:'lantern', muted:false, seen:[], stats:{ runs:0, kills:0, bestDepth:0 } };
 
@@ -561,14 +565,14 @@ function initAmbience(){
   state.ambience.length = 0;
   for (let i=0;i<46;i++){
     state.ambience.push({
-      x: state.rng()*state.W,
-      y: state.rng()*state.H,
-      r: state.rng()<0.5 ? 0.8+state.rng()*1.6 : 1.6+state.rng()*3.2,
-      sp: 8 + state.rng()*26,
-      a: 0.15 + state.rng()*0.4,
-      drift: (state.rng()-0.5)*10,
-      phase: state.rng()*Math.PI*2,
-      snow: state.rng()<0.55
+      x: fx()*state.W,
+      y: fx()*state.H,
+      r: fx()<0.5 ? 0.8+fx()*1.6 : 1.6+fx()*3.2,
+      sp: 8 + fx()*26,
+      a: 0.15 + fx()*0.4,
+      drift: (fx()-0.5)*10,
+      phase: fx()*Math.PI*2,
+      snow: fx()<0.55
     });
   }
 }
@@ -577,7 +581,7 @@ function updateAmbience(dt){
     const a = state.ambience[i];
     a.y -= a.sp*dt;
     a.x += Math.sin(state.time*0.5 + a.phase)*a.drift*dt;
-    if (a.y < -10){ a.y = state.H+10; a.x = state.rng()*state.W; }
+    if (a.y < -10){ a.y = state.H+10; a.x = fx()*state.W; }
   }
 }
 function drawAmbience(){
@@ -753,7 +757,7 @@ function resetRun(daily){
   state.lastWaveLanes.length = 0; state.boss = null; state.advanceTimer = 0; state.boons = {}; state.zoneLeaks = 0;
   state.glow = 0; state.glowTier = 0; state.glowGraceUntil = 0; state.glowToastAt = -99;
   state.pearls = mod('armed') ? ['storm','ink','frost'] : [null,null,null];
-  state.frostUntil = 0; state.stormUntil = 0; state.stormLv = 1; state.pets = 0; state.petCd = 0; state.gateRetry = 0;
+  state.frostUntil = 0; state.stormUntil = 0; state.stormLv = 1; state.pets = []; state.petCd = 0; state.gateRetry = 0;
   state.pearlLv = [1,1,1];
   state.volleyIndex = 0; state.fireCd = 0;
   state.shake = 0; state.laneFlash = [0,0,0]; state.dangerFlash = 0;
@@ -789,7 +793,8 @@ function recalcStats(){
   s.fireRate = v.fireRate * (tier >= 1 ? CONFIG.GLOW_TIER_RATE : 1);
   s.damage = v.dmg;
   s.pierce = v.pierce + (tier >= 3 ? 1 : 0);
-  s.bullets = v.bullets + (tier >= 2 ? 1 : 0);
+  s.bullets = v.bullets;
+  s.twin = tier >= 2;
   s.spread = v.spread || 0;
   s.slow = v.slow || 0;
   s.gateChargeMul = (1 + 0.4*boon('gates')) * (mod('heavy') ? 1.5 : 1) * (state.vent === 'tidecaller' && !state.flood ? 2 : 1);
@@ -804,7 +809,6 @@ function boonOk(k){
   if (boon(k) >= BOONS[k].max) return false;
   if (k === 'mend') return state.player.shells < CONFIG.BASE_SHELLS-1;
   if (k === 'bright') return glowCap() < CONFIG.GLOW_MAX;
-  if (k === 'hatch') return state.pets < CONFIG.PET_MAX;
   return true;
 }
 function offerBoons(){
@@ -813,8 +817,8 @@ function offerBoons(){
   const rare = keys.filter(function(k){ return BOONS[k].rare; });
   const take = function(a){ return a.splice(Math.floor(state.rng()*a.length),1)[0]; };
   const pick = [];
-  let note = 'Clear a zone without leaks to get a rare reward';
-  if (state.zoneLeaks === 0 && rare.length){ pick.push(take(rare)); note = 'Flawless zone: one rare reward'; }
+  let note = state.zone >= 2 ? 'Clear a zone without leaks to get a rare reward' : 'From zone 2 on, a zone without leaks earns a rare reward';
+  if (state.zoneLeaks === 0 && state.zone >= 2 && rare.length){ pick.push(take(rare)); note = 'Flawless zone: one rare reward'; }
   else if ((state.zoneLeaks >= 3 || state.player.shells <= 2) && common.indexOf('mend') >= 0){
     pick.push(common.splice(common.indexOf('mend'),1)[0]); note = 'Rough zone: mending is on offer';
   }
@@ -841,7 +845,6 @@ function takeBoon(k){
   if (!BOT && state.screen !== 'boon') return; // a double tap must not skip a zone
   state.boons[k] = boon(k) + 1;
   if (k === 'mend') state.player.shells = CONFIG.BASE_SHELLS;
-  if (k === 'hatch') state.pets = Math.min(CONFIG.PET_MAX, state.pets + 1);
   recalcStats();
   state.screen = 'playing';
   showScreen('playing');
@@ -953,7 +956,7 @@ function newEnemy(type, lane, y, opts){
     speed: t.speed, behavior: t.behavior, glow: t.glow,
     dead:false, boss:false, cloneable: opts.clone!==false, processed:false,
     slowMul:1, slowUntil:0, curSlow:1, phase: state.rng()*6.28,
-    dashStarted:false, dashT:0, dashX0:0, dashX1:0, xoff:0, drained:false
+    dashStarted:false, dashT:0, dashX0:0, dashX1:0, xoff:0
   };
   if (type === 'darter' && !opts.instantDash) e.dashAt = state.topY + (0.3 + 0.3*state.rng())*state.playH;
   state.enemies.push(e);
@@ -976,9 +979,12 @@ function spawnClone(src, gate){
   state.clones++;
   return e;
 }
-function hpMul(){ return (1 + CONFIG.HP_SCALE*(state.zone-1)) * (mod('heavy') ? 1.3 : 1); }
+// The quadratic term outgrows boss rewards, so every run ends eventually.
+function hpMul(){ const z = state.zone-1; return (1 + CONFIG.HP_SCALE*z + CONFIG.HP_SCALE_SQ*z*z) * (mod('heavy') ? 1.3 : 1); }
 function waveInterval(){ return Math.max(CONFIG.WAVE_INTERVAL_MIN, CONFIG.WAVE_INTERVAL - CONFIG.WAVE_INTERVAL_DEC*(state.zone-1)); }
 function gateInterval(){ return Math.max(CONFIG.GATE_INTERVAL_MIN, CONFIG.GATE_INTERVAL - CONFIG.GATE_INTERVAL_DEC*(state.zone-1)); }
+// A lane next to l; edge lanes only step inward (no jumping across the screen).
+function neighborLane(l){ return l === 0 ? 1 : (l === CONFIG.LANES-1 ? l-1 : (state.rng() < 0.5 ? l-1 : l+1)); }
 function pickLane(){
   const L = CONFIG.LANES;
   let lane = Math.floor(state.rng()*L);
@@ -1006,20 +1012,21 @@ function pickType(){
   for (let i=0;i<av.length;i++){ r -= av[i].w; if (r <= 0) return av[i].t; }
   return 'drifter';
 }
+function waveSize(){ return Math.round((state.zone === 1 ? CONFIG.ZONE1_WAVE_MUL : 1) * CONFIG.WAVE_SIZE_MUL * (CONFIG.WAVE_SIZE_BASE + state.zone + Math.floor(state.tZone/CONFIG.WAVE_SIZE_TZONE_STEP))); }
 function scheduleWave(){
   const lane = pickLane();
-  const count = Math.round((state.zone === 1 ? CONFIG.ZONE1_WAVE_MUL : 1) * CONFIG.WAVE_SIZE_MUL * (CONFIG.WAVE_SIZE_BASE + state.zone + Math.floor(state.tZone/CONFIG.WAVE_SIZE_TZONE_STEP)));
+  const count = waveSize();
   let bulwarks = 0;
   for (let i=0;i<count;i++){
     let type = pickType();
     if (type === 'bulwark'){ if (bulwarks >= 1) type = 'drifter'; else bulwarks++; }
-    state.spawnQueue.push({ type:type, lane:lane, t:i*CONFIG.WAVE_SPACING });
+    state.spawnQueue.push({ type:type, lane:lane, t:CONFIG.WAVE_WARN + i*CONFIG.WAVE_SPACING });
   }
   if (state.zone >= 2 && state.rng() < 0.30){
     let l2 = pickLane(); if (l2 === lane) l2 = (l2+1)%CONFIG.LANES;
     const half = Math.max(1, Math.floor(count/2));
     for (let i=0;i<half;i++){
-      state.spawnQueue.push({ type: pickType(), lane:l2, t: 0.12 + i*CONFIG.WAVE_SPACING });
+      state.spawnQueue.push({ type: pickType(), lane:l2, t: CONFIG.WAVE_WARN + 0.12 + i*CONFIG.WAVE_SPACING });
     }
   }
 }
@@ -1058,7 +1065,7 @@ function spawnGate(){
     pearl: kind === 'pearl' ? pickPearlForGate() : null,
     pack: kind === 'rot' ? rotPack() : null,
     charge: 0, needed: CONFIG.GATE_CHARGE_BASE + CONFIG.GATE_CHARGE_PER_ZONE*state.zone,
-    clones: 0, age: boon('bloom') ? CONFIG.RIPE_TIME : 0, eaten: 0, dead: false
+    clones: 0, age: 0, eaten: 0, dead: false
   });
   triggerGuide('gate:'+kind, x, y);
 }
@@ -1153,8 +1160,7 @@ function updateBoss(dt){
     e.moveT -= dt;
     if (e.moveT <= 0 && e.telegraph <= 0){
       e.moveT = 4;
-      const opts = [(e.lane+1)%CONFIG.LANES, (e.lane+CONFIG.LANES-1)%CONFIG.LANES];
-      e.targetLane = opts[Math.floor(state.rng()*2)];
+      e.targetLane = neighborLane(e.lane);
       e.telegraph = 0.8;
       e.lureFlash = 0.8;
     }
@@ -1177,7 +1183,7 @@ function updateBoss(dt){
 /* ============================ COMBAT ============================ */
 function fireVolley(lane, damage, pierce, slow, y){
   const s = state.stats;
-  const n = Math.max(1, s.bullets);
+  const n = Math.max(1, s.bullets + (s.twin && state.volleyIndex % CONFIG.GLOW_TWIN_EVERY === 0 ? 1 : 0));
   const y0 = y==null ? state.reefY - 16 : y;
   const cx = laneX(lane);
   for (let i=0;i<n;i++){
@@ -1207,10 +1213,10 @@ function hitEnemy(e, bullet){
 function spawnBurst(x,y,rgb,n,sp){
   for (let i=0;i<n;i++){
     if (state.particles.length >= CONFIG.MAX_PARTICLES) return;
-    const a = state.rng()*6.2832, s = sp*(0.4+state.rng());
+    const a = fx()*6.2832, s = sp*(0.4+fx());
     state.particles.push({
       x:x, y:y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
-      life:0.4+state.rng()*0.45, max:0.85, rgb:rgb, size:1.5+state.rng()*2.5
+      life:0.4+fx()*0.45, max:0.85, rgb:rgb, size:1.5+fx()*2.5
     });
   }
 }
@@ -1250,8 +1256,7 @@ function onDeath(e){
   // Storm: every kill arcs to the frontmost enemy in an adjacent lane. Arc kills
   // enter the same death queue, so chains resolve in processDeaths' guarded loop.
   if (state.stormUntil > state.time && !e.boss){
-    const adj = [(e.lane+1)%CONFIG.LANES, (e.lane+CONFIG.LANES-1)%CONFIG.LANES];
-    const lane = adj[Math.floor(state.rng()*2)];
+    const lane = neighborLane(e.lane);
     let target = null;
     for (let i=0;i<state.enemies.length;i++){
       const o = state.enemies[i];
@@ -1294,9 +1299,10 @@ function leak(e){
   triggerCallout('leak:burst', 'Reef burst', 'A creature that breaks through costs a shell, but it bursts and takes the creatures right behind it along.', laneX(lane), state.reefY - 30);
   state.laneFlash[lane] = 1;
   state.dangerFlash = 1;
-  setGlow(state.glow - CONFIG.LEAK_GLOW);
+  setGlow(state.glow - CONFIG.LEAK_GLOW - (e.type === 'shade' ? CONFIG.SHADE_DRAIN : 0));
+  if (e.type === 'shade') state.ripples.push({ x:e.x, y:state.reefY, t:0.7, max:0.7, rgb:'121,40,202', r:state.playH*0.22 });
   state.zoneLeaks++;
-  if (state.pets > 0){ state.pets--; toast('A hatchling fled', null, true); }
+  if (state.pets.length){ state.pets.shift(); toast('A hatchling fled', null, true); }
   if (!reduceMotion) state.shake = Math.max(state.shake, 9);
   spawnBurst(e.x, state.reefY, '255,46,99', 14, 140);
   Audio_.leak();
@@ -1362,7 +1368,7 @@ function usePearl(i){
     state.stormMax = state.stormUntil - state.time;
     state.stormLv = L;
     for (let k=0;k<state.enemies.length;k++){
-      if (state.rng() < 0.4) state.arcs.push({ ax:state.player.x, ay:state.reefY-40, bx:state.enemies[k].x, by:state.enemies[k].y, t:0.18, max:0.18 });
+      if (fx() < 0.4) state.arcs.push({ ax:state.player.x, ay:state.reefY-40, bx:state.enemies[k].x, by:state.enemies[k].y, t:0.18, max:0.18 });
     }
   } else if (key === 'ink'){
     const dmg = v * hpMul();
@@ -1389,11 +1395,11 @@ function claimGate(g){
   const bonus = 0.5*(stage-1);
   if (stage === 3 && isDeep(g)){
     state.score += CONFIG.DEEP_SCORE;
-    if (state.pets < CONFIG.PET_MAX){
-      state.pets++;
-      toast('Hatchling! · +' + CONFIG.DEEP_SCORE, '#8FF7D2');
-      spawnBurst(state.player.x, state.reefY - 10, '143,247,210', 24, 140);
-    } else toast('Deep claim · +' + CONFIG.DEEP_SCORE, '#8FF7D2');
+    if (state.pets.length >= CONFIG.PET_MAX) state.pets.shift();
+    state.pets.push(state.time + CONFIG.PET_LIFE*(1 + 0.5*boon('hatch')));
+    state.pets.sort(function(a,b){ return a-b; });
+    toast('Hatchling! · +' + CONFIG.DEEP_SCORE, '#8FF7D2');
+    spawnBurst(state.player.x, state.reefY - 10, '143,247,210', 24, 140);
   }
   if (g.kind === 'pearl'){
     addPearl(g.pearl, stage);
@@ -1445,10 +1451,11 @@ function updatePlayer(dt){
     }
     Audio_.shot();
   }
-  if (state.pets > 0){
+  while (state.pets.length && state.pets[0] <= state.time){ state.pets.shift(); toast('A hatchling swam off', null, true); }
+  if (state.pets.length){
     state.petCd -= dt;
     if (state.petCd <= 0){
-      state.petCd = 1/(CONFIG.PET_RATE*state.pets);
+      state.petCd = 1/(CONFIG.PET_RATE*state.pets.length);
       fireFrom(p.lane, state.stats.damage, 0, state.reefY - 20);
     }
   }
@@ -1483,8 +1490,7 @@ function updateEnemies(dt){
     } else if (e.behavior === 'dash'){
       if (!e.dashStarted && e.y >= e.dashAt){
         e.dashStarted = true;
-        const adj = [(e.lane+1)%CONFIG.LANES, (e.lane+CONFIG.LANES-1)%CONFIG.LANES];
-        e.lane = adj[Math.floor(state.rng()*2)];
+        e.lane = neighborLane(e.lane);
         e.dashX0 = e.x; e.dashX1 = laneX(e.lane); e.dashT = 0;
       }
       if (e.dashStarted && e.dashT < 0.4){
@@ -1498,14 +1504,6 @@ function updateEnemies(dt){
     }
     // move
     e.y += e.speed*playH*dt*e.curSlow;
-    // Shade: one dark pulse that drains Glow as it nears the reef
-    if (e.type === 'shade' && !e.drained && e.y >= state.reefY - CONFIG.SHADE_RANGE*playH){
-      e.drained = true;
-      setGlow(state.glow - CONFIG.SHADE_DRAIN);
-      state.ripples.push({ x:e.x, y:e.y, t:0.7, max:0.7, rgb:'121,40,202', r:playH*0.22 });
-      spawnBurst(e.x, e.y, '121,40,202', 18, 120);
-      Audio_.tone(190,0.35,'sawtooth',0.06,80);
-    }
     // cloning
     checkClone(e);
     // reef
@@ -1718,13 +1716,14 @@ function render(){
   ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
   ctx.save();
   if (state.shake > 0.2 && !reduceMotion){
-    ctx.translate((state.rng()-0.5)*state.shake, (state.rng()-0.5)*state.shake);
+    ctx.translate((fx()-0.5)*state.shake, (fx()-0.5)*state.shake);
   }
   ctx.fillStyle = bgGrad || '#04121F';
   ctx.fillRect(-20,-20,W+40,H+40);
   drawKelp();
   drawAmbience();
   drawLaneFloor();
+  drawIncoming();
   // lane flashes
   for (let l=0;l<3;l++){
     if (state.laneFlash[l] > 0){
@@ -1789,6 +1788,26 @@ function drawLaneFloor(){
   }
   ctx.restore();
 }
+// Incoming waves: a coral chevron per lane that brightens as the wave nears, wider for bigger waves.
+function drawIncoming(){
+  if (state.screen === 'title' || state.screen === 'intro') return;
+  const soon = [Infinity,Infinity,Infinity], n = [0,0,0];
+  for (let i=0;i<state.spawnQueue.length;i++){ const q = state.spawnQueue[i]; n[q.lane]++; soon[q.lane] = Math.min(soon[q.lane], q.t); }
+  ctx.save();
+  for (let l=0;l<CONFIG.LANES;l++){
+    if (!n[l]) continue;
+    const k = clamp(1 - soon[l]/CONFIG.WAVE_WARN, 0, 1);
+    const a = 0.35 + 0.5*k + 0.15*Math.sin(state.time*14);
+    const x = laneX(l), y = state.topY + 6, w = 10 + Math.min(14, n[l]*1.5);
+    drawGlow('255,46,99', x, y, 18 + w, 0.25 + 0.35*k);
+    ctx.strokeStyle = 'rgba(255,106,61,' + a.toFixed(2) + ')';
+    ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let c=0;c<2;c++){
+      ctx.beginPath(); ctx.moveTo(x - w, y - 6 + c*9); ctx.lineTo(x, y + 2 + c*9); ctx.lineTo(x + w, y - 6 + c*9); ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
 function drawDeepLine(){
   const y = state.reefY - CONFIG.DEEP_RANGE*state.playH;
   ctx.save();
@@ -1804,8 +1823,10 @@ function drawDeepLine(){
   ctx.restore();
 }
 function drawPets(){
-  for (let i=0;i<state.pets;i++){
+  for (let i=0;i<state.pets.length;i++){
     const side = i === 0 ? -1 : 1;
+    const left = state.pets[i] - state.time;
+    if (left < 5 && Math.sin(state.time*(left < 2 ? 24 : 12)) < 0) continue; // blinks before it leaves
     const x = state.player.x + side*34, y = state.reefY - 4 + Math.sin(state.time*4 + i*2)*3;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -1967,7 +1988,7 @@ function drawShade(e, icy){
   }
   ctx.fillStyle = '#3A0F63';
   ctx.beginPath(); ctx.arc(0,0,r*0.44,0,6.2832); ctx.fill();
-  ctx.fillStyle = e.drained ? 'rgba(185,140,255,0.28)' : 'rgba(185,140,255,0.75)';
+  ctx.fillStyle = 'rgba(185,140,255,0.75)';
   ctx.beginPath(); ctx.ellipse(0,-r*0.1, r*0.28, r*0.15, 0, 0, 6.2832); ctx.fill();
   ctx.fillStyle = '#1B0733';
   ctx.beginPath(); ctx.arc(0,-r*0.1, 1.5, 0, 6.2832); ctx.fill();
@@ -2044,7 +2065,7 @@ function drawGates(){
     const danger = g.clones > 0;
     const warn = gateInDanger(g);
     const pulse = danger ? (0.5+0.5*Math.sin(state.time*CONFIG.GATE_CLONE_PULSE)) : 0;
-    const hatch = !rot && stage === 3 && isDeep(g) && state.pets < CONFIG.PET_MAX;
+    const hatch = !rot && stage === 3 && isDeep(g);
     const hp = hatch ? 0.5 + 0.5*Math.sin(state.time*6) : 0;
     drawGlow(danger ? '255,46,99' : (hatch ? '143,247,210' : rgb), g.x, g.y, w*(0.45 + 0.12*stage), 0.4 + 0.15*stage + 0.3*pulse + 0.3*hp);
     ctx.restore();
@@ -2973,7 +2994,8 @@ window.GT = {
   VENT_DEFS: VENT_DEFS,
   ENEMY_TYPES: ENEMY_TYPES,
   PEARLS: PEARLS,
-  GLOW_TIERS: GLOW_TIERS
+  GLOW_TIERS: GLOW_TIERS,
+  fn: { hpMul: hpMul, waveSize: waveSize, waveInterval: waveInterval, availableTypes: availableTypes } // for test/model.js
 };
 loadSave();
 Audio_.muted = save.muted;

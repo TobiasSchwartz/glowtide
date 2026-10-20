@@ -16,7 +16,9 @@ Fonts: Unbounded (display), Sora (UI). Single deliberate dark look.
 Firing is automatic into the current lane. Taps are reserved for the pearl tray. Arrow keys on desktop.
 
 **Core loop.** Waves come down the three lanes; each creature reaching the reef costs shells
-(5 total). Gates drift down slower than enemies:
+(5 total). A wave is announced 1.5 s ahead by a chevron at the top of its lane (`WAVE_WARN`), so
+the player can plan gate vs. defend. Darters and the Anglerking only step to a neighbouring lane
+(edge lanes move inward). Gates drift down slower than enemies:
 - Shooting a gate fills its charge; when full the player gets its reward.
 - **Twist, breeding gates:** while a gate is unclaimed, every creature passing through it is cloned
   (max 4 clones, then the gate collapses). You must clear the lane in front of a gate and charge it
@@ -29,8 +31,9 @@ Firing is automatic into the current lane. Taps are reserved for the pearl tray.
   Claiming gives +2 Glow but releases the pack (a Splitter plus drifters) at the gate. Ignoring one is
   safe: rotten gates never clone.
 - **Deep claim and hatchlings:** claiming a fully ripe gate below the dashed DEEP line (bottom 30%
-  of the lane) gives +500 and hatches a hatchling (max 2) that shoots beside you; each leak scares
-  one away. Eligible gates pulse green.
+  of the lane) gives +500 and hatches a hatchling (max 2) that shoots beside you for 30 s
+  (`PET_LIFE`, blinks before it leaves); at the cap a deep claim renews the older one, so deep
+  claims stay worth chasing. Each leak scares one away. Eligible gates pulse green.
 - **Safe spawns:** a new gate avoids lanes with creatures near the top or queued, retrying up to
   four times (0.8 s apart) before it spawns in the calmest lane.
 - **Reef burst:** a leaking creature costs shells as before, but bursts and damages the creatures
@@ -39,7 +42,12 @@ Firing is automatic into the current lane. Taps are reserved for the pearl tray.
 **Glow (temporary power, replaces permanent upgrades).** Glow gates add +1 Glow (0-4). Drain grows
 with Glow (`GLOW_DRAIN_BASE + GLOW_DRAIN_PER*glow`), so tier IV needs upkeep and tier I is stable; a
 claim pauses the drain for 2 s. A leak costs only 0.35 Glow (v2 took a whole tier, which caused a
-death spiral); the Shade still drains 1. Glow claimed above the cap becomes score. Tiers: I faster shots, II twin shot, III piercing, IV Full Bloom (side-lane shots).
+death spiral). A Shade that gets through drains 1 more (it used to drain when near the reef, i.e.
+exactly while you fought it, which made it a run killer). Glow claimed above the cap becomes score.
+Tiers: I faster shots (x1.25), II twin shot (extra bullet every 2nd volley, `GLOW_TWIN_EVERY`), III
+piercing, IV Full Bloom (side-lane shots). Tiers are kept flat on purpose (tier 0 to III is about
+x2.3 damage, it was x4): with steep tiers no enemy pressure is both survivable at low Glow and
+challenging at high Glow, and every lost tier flips a run from cruising to collapse.
 Design reason: v1 had 11 permanent stacking upgrades, which made the player too strong over time
 and were opaque (unexplained icons). Glow keeps power tied to how well you play gates right now.
 
@@ -58,8 +66,9 @@ HP scales per zone.
 
 **Run structure.** Zones of 60 s waves, then a boss. After each boss the player picks one of three
 run-only rewards (`BOONS`). Each levels up to a max when picked again and its card shows the change
-("Damage +25% -> +50%", "Level 2 of 3"). A zone without leaks adds one rare reward (Brighter vent:
-Glow cap +1, Hatchling, Early bloom: gates start riper); 3+ leaks or 2 shells left adds Mend. Bosses: odd zones Maelstrom (3-lane vortex wall, one
+("Damage +25% -> +50%", "Level 2 of 3"). From zone 2 on, a zone without leaks adds one rare
+reward (Brighter vent: Glow cap +1, Old souls: hatchlings stay 50% longer; Early bloom was removed
+because flawless zone 1 made it near-guaranteed and trivialised deep claims); 3+ leaks or 2 shells left adds Mend. Bosses: odd zones Maelstrom (3-lane vortex wall, one
 segment per lane, spawns krill), even zones Anglerking (one big fish that hops lanes after a
 telegraph, spawns darters). Beating a boss: next zone, +1 shell, palette deepens. Score = kills +
 gates + boss bonus; depth in metres. Target run length 3-5 min.
@@ -131,9 +140,19 @@ count. Keep each `T()` call short (a few thousand frames); long synchronous loop
 Faster: `node test/sim.js <vent> <runs> [daily]` runs the script headless in Node (stubbed DOM, bot
 autopilot) and prints zone/score/minutes per run plus the cause of death (`w` waves, `b` during a
 boss, `B` boss reached the reef). Run the four vents in parallel; 8 runs take a few minutes.
+`CFG='{"HP_SCALE":0.3}' node test/sim.js ...` overrides CONFIG values without editing the game.
 
-Balance as of v3 (bot, 8 runs each): see History. v2.3 had a hard wall: enemy HP x count grew much
-faster than the capped player DPS, so every vent died in zone 3-4 (~14-17k score).
+Pressure model: `node test/sim.js model [tier]` prints per zone and vent, from the game's own
+formulas (`GT.fn`): U = incoming creature HP/s over your damage/s (share of time spent shooting
+creatures; the rest is free for gates) and B = one full wave's HP over the damage you deal while it
+crosses the lane (above 1 it leaks even with perfect play). Assumes +20% damage per boss reward.
+Bot calibration: the bot dies where U at tier II reaches about 2.5-3. Pressure grows slowly
+(fewer, bigger waves every 4.5-6 s; HP `1 + 0.2(z-1) + 0.02(z-1)^2`); the quadratic term outgrows
+boss rewards so every run ends. v3 grew HP x count / interval about cubically, which gave a wall at
+zone 5.
+
+Balance as of v3.2 (bot, 8 runs each): median zone 6 for every vent, averages 6.3-8.1, 8-11 min.
+The bot reacts instantly, so humans will die earlier; most bot deaths are now during bosses.
 
 ## History
 
@@ -147,6 +166,10 @@ faster than the capped player DPS, so every vent died in zone 3-4 (~14-17k score
   strategy". Design ideas from a 4-model brainstorm (deepseek, gemini, glm, sonnet). Wall removed
   (`HP_SCALE` 1.0 -> 0.6, clones at half HP, Bulwarks never cloned), Glow drain rework, reef burst
   (owner's idea), ripening and rotten gates, boss rewards, vent rules, daily modifiers and medals.
+- v3.2: feedback "Shade kills runs, hatchlings kept forever, Early bloom always offered". Wave
+  warning, Shade drains on leak, 30 s hatchlings, Early bloom removed, flatter Glow tiers, pressure
+  model and retune (Needle damage 2.75 -> 3), inward-only lane jumps, daily seed no longer consumed
+  by visual effects.
 
 ## Ideas not done yet
 
@@ -155,3 +178,5 @@ faster than the capped player DPS, so every vent died in zone 3-4 (~14-17k score
 - Wild ideas from the brainstorm: leaked shells hatch into pets, a nemesis that returns the enemy
   types you leaked most, taming gates that turn heavy enemies into allies, an upside-down zone.
 - Haptics (`navigator.vibrate`) on leaks.
+- Bosses are now the main killer in sims (boss HP still scales with `hpMul`; reaching the reef
+  ends the run regardless of shells).
