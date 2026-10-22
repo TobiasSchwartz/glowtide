@@ -114,8 +114,28 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 .bcard .vdesc{font-size:13px}
 .bcard .vdesc b{color:#EAFBFF}
 .bcard .chip{float:right;font-family:'Sora',system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#6fa6c4;margin-top:2px}
-.bcard.rare{border-color:var(--amber);box-shadow:0 0 22px rgba(255,215,106,.18)}
-.bcard.rare .chip{color:var(--amber)}
+.bcard{--tc:#6fa6c4;transition:border-color .2s,box-shadow .2s}
+.bcard.t1{--tc:#6CF0A0;border-color:var(--tc);box-shadow:0 0 14px rgba(108,240,160,.12)}
+.bcard.t2{--tc:#5FB4FF;border-color:var(--tc);box-shadow:0 0 18px rgba(95,180,255,.18)}
+.bcard.t3{--tc:#C77DFF;border-color:var(--tc);box-shadow:0 0 22px rgba(199,125,255,.24)}
+.bcard.t4{--tc:var(--amber);border-color:var(--tc);box-shadow:0 0 28px rgba(255,215,106,.32)}
+.bcard.t1,.bcard.t2,.bcard.t3,.bcard.t4{animation-name:tierUp;animation-duration:.25s}
+.bcard.t4{animation:tierUp .25s,legend 1.6s ease-in-out .25s infinite alternate}
+.bcard .chip{color:var(--tc)}
+@keyframes tierUp{50%{transform:scale(1.03)}}
+@keyframes legend{to{box-shadow:0 0 40px rgba(255,215,106,.5)}}
+@media (prefers-reduced-motion:reduce){.bcard{animation:none!important;transition:none}}
+#hudBoons{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;max-width:340px}
+#hudBoons:empty{display:none}
+.hb{--tc:#6fa6c4;font-family:'Sora',system-ui,sans-serif;font-size:8px;font-weight:600;letter-spacing:.1em;line-height:1;color:#CBE6F5;background:rgba(4,18,31,.55);border:1px solid var(--tc);border-radius:7px;padding:3px 5px;opacity:.85}
+.hb i{font-style:normal;color:var(--tc);letter-spacing:0;margin-left:3px}
+.hb.t1,.pb.t1{--tc:#6CF0A0}.hb.t2,.pb.t2{--tc:#5FB4FF}.hb.t3,.pb.t3{--tc:#C77DFF}.hb.t4,.pb.t4{--tc:var(--amber)}
+.pauseBoons{width:100%;max-width:300px;margin:0 0 14px}
+.pauseBoons:empty{display:none}
+.pb{--tc:#6fa6c4;display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#8fb4cc;border-left:2px solid var(--tc);padding:4px 0 4px 9px;margin:3px 0}
+.pb b{color:#EAFBFF;font-weight:600}
+.pb span:first-child{white-space:nowrap}
+.pb span:last-child{text-align:right}
 #safeProbe{position:fixed;left:0;bottom:0;width:1px;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden}
 </style>
 <canvas id="game"></canvas>
@@ -130,6 +150,7 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
     </div>
   </div>
   <div id="zoneBar"><i id="zoneFill"></i></div>
+  <div id="hudBoons"></div>
   <div id="bossbar" class="hidden"><i id="bossfill"></i></div>
 </div>
 
@@ -172,6 +193,7 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 <div id="pause" class="screen ui hidden">
   <h2>PAUSED</h2>
   <div class="sub">Tap anywhere to resume</div>
+  <div id="pauseBoons" class="pauseBoons"></div>
   <div class="rowbtns" style="max-width:260px">
     <button id="btnResume">Resume</button>
     <button id="btnQuit" class="ghost">Menu</button>
@@ -349,19 +371,33 @@ const DAILY_MODS = {
 const MEDALS = [ { zone:7, name:'Gold' }, { zone:5, name:'Silver' }, { zone:3, name:'Bronze' } ];
 
 // Boss rewards: pick one of three after each boss, for the current run only. Each levels up to
-// `max` when picked again; fx(n) is its total effect at level n. Rare ones need a zone without leaks.
+// `max` when picked again; fx(n) is its total effect at level n. t[n] is the tier of level n+1
+// (index into REWARD_TIERS), so the stronger levels of a reward are the rarer ones. `ab` is the short
+// HUD label; rewards without one are used up when taken.
 const BOONS = {
-  keen:   { name:'Keen shots',    max:3, lab:'Damage',               v:function(n){ return '+' + 25*n + '%'; } },
-  quick:  { name:'Quick vent',    max:3, lab:'Fire rate',            v:function(n){ return '+' + 20*n + '%'; } },
-  pierce: { name:'Needlepoint',   max:2, lab:'Extra creatures pierced', v:function(n){ return '+' + n; } },
-  steady: { name:'Steady glow',   max:3, lab:'Glow fades slower',    v:function(n){ return Math.round((1 - Math.pow(0.65, n))*100) + '%'; } },
-  gates:  { name:'Open gates',    max:3, lab:'Gate charge speed',    v:function(n){ return '+' + 40*n + '%'; } },
-  burst:  { name:'Coral reef',    max:2, lab:'Reef burst reach',     v:function(n){ return (1 + n) + 'x'; } },
-  side:   { name:'Side vents',    max:3, lab:'Shots into both other lanes', v:function(n){ return 'every ' + ['','4th','3rd','2nd'][n] + ' volley'; } },
-  mend:   { name:'Mend the reef', max:99, once:true, fx:function(){ return 'refill all shells now'; } },
-  bright: { name:'Brighter vent', max:1, rare:true, fx:function(){ return 'your Glow can reach one tier higher'; } },
-  hatch:  { name:'Old souls',     max:2, rare:true, lab:'Hatchlings stay', v:function(n){ return '+' + 50*n + '%'; } }
+  keen:   { ab:'DMG',    name:'Keen shots',    max:3, t:[0,1,2], lab:'Damage',               v:function(n){ return '+' + 25*n + '%'; } },
+  quick:  { ab:'RATE',   name:'Quick vent',    max:3, t:[0,1,2], lab:'Fire rate',            v:function(n){ return '+' + 20*n + '%'; } },
+  steady: { ab:'GLOW',   name:'Steady glow',   max:3, t:[0,0,1], lab:'Glow fades slower',    v:function(n){ return Math.round((1 - Math.pow(0.65, n))*100) + '%'; } },
+  gates:  { ab:'GATE',   name:'Open gates',    max:3, t:[0,0,1], lab:'Gate charge speed',    v:function(n){ return '+' + 40*n + '%'; } },
+  burst:  { ab:'BURST',  name:'Coral reef',    max:2, t:[0,1],   lab:'Reef burst reach',     v:function(n){ return (1 + n) + 'x'; } },
+  mend:   {              name:'Mend the reef', max:99, t:[0], once:true, fx:function(){ return 'refill all shells now'; } },
+  hatch:  { ab:'SOUL',   name:'Old souls',     max:2, t:[1,2],   lab:'Hatchlings stay', v:function(n){ return '+' + 50*n + '%'; } },
+  side:   { ab:'SIDE',   name:'Side vents',    max:3, t:[1,2,3], lab:'Shots into both other lanes', v:function(n){ return 'every ' + ['','4th','3rd','2nd'][n] + ' volley'; } },
+  pierce: { ab:'PIERCE', name:'Needlepoint',   max:2, t:[2,3],   lab:'Extra creatures pierced', v:function(n){ return '+' + n; } },
+  bright: { ab:'CAP',    name:'Brighter vent', max:1, t:[3], fx:function(){ return 'your Glow can reach one tier higher'; } },
+  spring: {              name:'Spring tide',   max:1, t:[4], fx:function(){ const n = springTargets().map(function(k){ return BOONS[k].name; }); return n.slice(0,-1).join(', ') + ' and ' + n[n.length-1] + ' each gain a level'; } }
 };
+// Cascading loot: every card starts Common and climbs one tier per successful roll; climb[i] is the
+// chance to go from tier i to i+1. Luck adds to every step: a zone without leaks (from zone 2), depth,
+// and a pity bonus for each offer in a row that showed nothing Rare or better.
+const REWARD_TIERS = [
+  { name:'Common',    climb:0.36 },
+  { name:'Uncommon',  climb:0.28 },
+  { name:'Rare',      climb:0.22 },
+  { name:'Epic',      climb:0.16 },
+  { name:'Legendary', climb:0 }
+];
+const REWARD_LUCK = { flawless:0.10, perZone:0.01, pity:0.05 };
 
 const GUIDE_ENTRIES = [
   { sec:'Enemies', id:'enemy:drifter',  name:'Drifter',  text:'Slow and steady. Don\u2019t let it reach the reef.' },
@@ -412,6 +448,7 @@ function mixArr(a,b,t){ return a.map((v,i)=>Math.round(v+(b[i]-v)*t)); }
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const $ = function(id){ return document.getElementById(id); };
+const hudBoonsEl = $('hudBoons'), pauseBoonsEl = $('pauseBoons');
 const hudEl = $('hud'), hScoreEl = $('hScore'), hDepthEl = $('hDepth');
 const zoneFillEl = $('zoneFill'), bossbarEl = $('bossbar'), bossfillEl = $('bossfill');
 const titleEl = $('title'), pauseEl = $('pause'), overEl = $('over'), guideEl = $('guide'), introEl = $('intro'), boonEl = $('boon');
@@ -497,7 +534,7 @@ const state = {
   nextId:1,
   score:0, kills:0, gatesClaimed:0, clones:0, bossesKilled:0,
   zone:1, tZone:0, phase:'waves',
-  waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, mods:[], vent:'lantern', gardenKills:0, flood:false,
+  waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, dryOffers:0, mods:[], vent:'lantern', gardenKills:0, flood:false,
   glow:0, glowTier:0, glowGraceUntil:0, glowToastAt:-99, pearls:[null,null,null],
   frostUntil:0, stormUntil:0, frostMax:1, stormMax:1, stormLv:1, pearlLv:[0,0,0], pets:[], petCd:0, gateRetry:0,
   volleyIndex:0, fireCd:0,
@@ -754,7 +791,7 @@ function resetRun(daily){
   state.score = 0; state.kills = 0; state.gatesClaimed = 0; state.clones = 0; state.bossesKilled = 0;
   state.zone = 1; state.tZone = 0; state.phase = 'waves';
   state.waveTimer = 2.0; state.gateTimer = CONFIG.GATE_FIRST;
-  state.lastWaveLanes.length = 0; state.boss = null; state.advanceTimer = 0; state.boons = {}; state.zoneLeaks = 0;
+  state.lastWaveLanes.length = 0; state.boss = null; state.advanceTimer = 0; state.boons = {}; state.zoneLeaks = 0; state.dryOffers = 0;
   state.glow = 0; state.glowTier = 0; state.glowGraceUntil = 0; state.glowToastAt = -99;
   state.pearls = mod('armed') ? ['storm','ink','frost'] : [null,null,null];
   state.frostUntil = 0; state.stormUntil = 0; state.stormLv = 1; state.pets = []; state.petCd = 0; state.gateRetry = 0;
@@ -805,36 +842,64 @@ function recalcStats(){
 }
 function boon(k){ return state.boons[k] || 0; }
 function glowCap(){ return Math.min(CONFIG.GLOW_MAX, VENT_DEFS[state.vent].glowMax + boon('bright')); }
+function boonTier(k){ const t = BOONS[k].t; return t[Math.min(boon(k), t.length-1)]; }
+function springTargets(){ return Object.keys(BOONS).filter(function(k){ return k !== 'spring' && !BOONS[k].once && boon(k) > 0 && boon(k) < BOONS[k].max; }); }
 function boonOk(k){
   if (boon(k) >= BOONS[k].max) return false;
   if (k === 'mend') return state.player.shells < CONFIG.BASE_SHELLS-1;
   if (k === 'bright') return glowCap() < CONFIG.GLOW_MAX;
+  if (k === 'spring') return springTargets().length >= 2;
   return true;
 }
-function offerBoons(){
-  const keys = Object.keys(BOONS).filter(boonOk);
-  const common = keys.filter(function(k){ return !BOONS[k].rare; });
-  const rare = keys.filter(function(k){ return BOONS[k].rare; });
-  const take = function(a){ return a.splice(Math.floor(state.rng()*a.length),1)[0]; };
-  const pick = [];
-  let note = state.zone >= 2 ? 'Clear a zone without leaks to get a rare reward' : 'From zone 2 on, a zone without leaks earns a rare reward';
-  if (state.zoneLeaks === 0 && state.zone >= 2 && rare.length){ pick.push(take(rare)); note = 'Flawless zone: one rare reward'; }
-  else if ((state.zoneLeaks >= 3 || state.player.shells <= 2) && common.indexOf('mend') >= 0){
-    pick.push(common.splice(common.indexOf('mend'),1)[0]); note = 'Rough zone: mending is on offer';
+// Roll one card's tier: start at Common, climb while the roll succeeds.
+function rollTier(luck){
+  let t = 0;
+  while (t < REWARD_TIERS.length-1 && state.rng() < REWARD_TIERS[t].climb + luck) t++;
+  return t;
+}
+// Pick a reward of the rolled tier. If none is left there, fall back to the nearest lower tier,
+// then the nearest higher one.
+function pickOfTier(pool, tier){
+  for (let d = 0; d < REWARD_TIERS.length*2; d++){
+    const want = d < REWARD_TIERS.length ? tier - d : tier + d - REWARD_TIERS.length + 1;
+    const of = pool.filter(function(k){ return boonTier(k) === want; });
+    if (of.length) return of[Math.floor(state.rng()*of.length)];
   }
-  while (pick.length < 3 && common.length) pick.push(take(common));
+  return null;
+}
+function offerBoons(){
+  const pool = Object.keys(BOONS).filter(boonOk);
+  const flawless = state.zoneLeaks === 0 && state.zone >= 2;
+  const luck = (flawless ? REWARD_LUCK.flawless : 0) + REWARD_LUCK.perZone*(state.zone-1) + REWARD_LUCK.pity*state.dryOffers;
+  const pick = [], climbs = [];
+  let note = state.zone >= 2 ? 'Clear a zone without leaks for rarer rewards' : 'From zone 2 on, a zone without leaks makes rewards rarer';
+  if (flawless) note = 'Flawless zone: the tide favours you';
+  else if (state.dryOffers) note = 'The tide is turning: rarer rewards are closer';
+  if ((state.zoneLeaks >= 3 || state.player.shells <= 2) && pool.indexOf('mend') >= 0){
+    pick.push(pool.splice(pool.indexOf('mend'),1)[0]); climbs.push(0); note = 'Rough zone: mending is on offer';
+  }
+  while (pick.length < 3 && pool.length){
+    const k = pickOfTier(pool, rollTier(luck));
+    pool.splice(pool.indexOf(k), 1);
+    pick.push(k);
+  }
+  state.dryOffers = pick.some(function(k){ return boonTier(k) >= 2; }) ? 0 : state.dryOffers + 1;
   if (BOT){ takeBoon(pick[0]); return; }
   $('boonSub').textContent = note;
   const list = $('boonList');
   list.innerHTML = '';
-  pick.forEach(function(k){
-    const B = BOONS[k], n = boon(k);
-    const chip = B.rare ? 'Rare' : (B.once ? '' : (n ? 'Level ' + (n+1) + ' of ' + B.max : 'New'));
+  pick.forEach(function(k, i){
+    const B = BOONS[k], n = boon(k), tier = boonTier(k);
+    const lv = B.once || B.max === 1 ? '' : ' · ' + (n ? 'Lv ' + (n+1) + '/' + B.max : 'New');
     const fx1 = B.fx ? B.fx() : '';
-    const desc = B.v ? B.lab + ' ' + (n ? B.v(n) + ' \u2192 ' : '') + '<b>' + B.v(n + 1) + '</b>' : fx1.charAt(0).toUpperCase() + fx1.slice(1);
+    const desc = B.v ? B.lab + ' ' + (n ? B.v(n) + ' → ' : '') + '<b>' + B.v(n + 1) + '</b>' : fx1.charAt(0).toUpperCase() + fx1.slice(1);
     const b = document.createElement('button');
-    b.className = 'bcard' + (B.rare ? ' rare' : '');
-    b.innerHTML = '<div class="vname">' + B.name + (chip ? '<span class="chip">' + chip + '</span>' : '') + '</div><div class="vdesc">' + desc + '</div>';
+    b.innerHTML = '<div class="vname">' + B.name + '<span class="chip"></span></div><div class="vdesc">' + desc + '</div>';
+    const chip = b.querySelector('.chip');
+    const show = function(t){ b.className = 'bcard t' + t; chip.textContent = REWARD_TIERS[t].name + lv; };
+    // The reveal climbs the tiers one step at a time, like the roll did.
+    if (reduceMotion || !tier) show(tier);
+    else { show(0); for (let t = 1; t <= tier; t++) setTimeout(show, 160 + i*120 + t*230, t); }
     b.addEventListener('click', function(){ takeBoon(k); });
     list.appendChild(b);
   });
@@ -843,6 +908,7 @@ function offerBoons(){
 }
 function takeBoon(k){
   if (!BOT && state.screen !== 'boon') return; // a double tap must not skip a zone
+  if (k === 'spring') springTargets().forEach(function(j){ state.boons[j]++; });
   state.boons[k] = boon(k) + 1;
   if (k === 'mend') state.player.shells = CONFIG.BASE_SHELLS;
   recalcStats();
@@ -850,6 +916,22 @@ function takeBoon(k){
   showScreen('playing');
   last = performance.now();
   nextZone();
+}
+// Held rewards: tier-coloured pills under the zone bar ("DMG ●●○"), full effects on the pause screen.
+function renderBoons(){
+  let hud = '', full = '';
+  Object.keys(BOONS).forEach(function(k){
+    const B = BOONS[k], n = boon(k);
+    if (!n || !B.ab) return;
+    const cls = 't' + B.t[Math.min(n, B.t.length) - 1];
+    const dots = B.max > 1 ? '●'.repeat(n) + '○'.repeat(B.max - n) : '';
+    let fx = B.v ? B.lab + ' ' + B.v(n) : B.fx();
+    fx = fx.charAt(0).toUpperCase() + fx.slice(1);
+    hud += '<span class="hb ' + cls + '">' + B.ab + (dots ? '<i>' + dots + '</i>' : '') + '</span>';
+    full += '<div class="pb ' + cls + '"><span><b>' + B.name + '</b>' + (dots ? ' ' + n + '/' + B.max : '') + '</span><span>' + fx + '</span></div>';
+  });
+  hudBoonsEl.innerHTML = hud;
+  pauseBoonsEl.innerHTML = full;
 }
 function ventBaseRate(){
   const v = VENT_DEFS[state.vent];
@@ -2549,6 +2631,7 @@ function drawBanner(){
 /* ============================ SCREENS ============================ */
 function showScreen(name){
   if (name === 'playing') Audio_.resume(); else Audio_.pause();
+  if (name === 'playing' || name === 'paused') renderBoons();
   titleEl.classList.toggle('hidden', name !== 'title');
   pauseEl.classList.toggle('hidden', name !== 'paused');
   overEl.classList.toggle('hidden', name !== 'gameover');

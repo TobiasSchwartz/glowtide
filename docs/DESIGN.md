@@ -66,17 +66,28 @@ HP scales per zone.
 
 **Run structure.** Zones of 60 s waves, then a boss. After each boss the player picks one of three
 run-only rewards (`BOONS`). Each levels up to a max when picked again and its card shows the change
-("Damage +25% -> +50%", "Level 2 of 3"). From zone 2 on, a zone without leaks adds one rare
-reward (Brighter vent: Glow cap +1, Old souls: hatchlings stay 50% longer; Early bloom was removed
-because flawless zone 1 made it near-guaranteed and trivialised deep claims); 3+ leaks or 2 shells left adds Mend. Bosses: odd zones Maelstrom (3-lane vortex wall, one
+("Damage +25% -> +50%", "Lv 2/3").
+**Cascading loot (v3.3).** Rewards have five tiers: Common, Uncommon, Rare, Epic, Legendary. A
+reward's tier belongs to its next level (`t` per level), so stronger levels are rarer: Keen shots
+and Quick vent go Common -> Uncommon -> Rare, Side vents Uncommon -> Rare -> Epic, Needlepoint Rare
+-> Epic. Utility rewards (Steady glow, Open gates, Coral reef, Mend) stay mostly Common, Old souls is
+Uncommon/Rare, Brighter vent Epic, and Spring tide (every reward you hold gains a level, needs two
+upgradable ones) is the only Legendary. Each card rolls its tier as a cascade: start Common, climb
+one tier per success (36/28/22/16%), then draw a reward of that tier (falling back to the nearest
+lower, then higher, tier when none is left). Luck adds to every climb: +10% for a zone without
+leaks (zone 2+), +1% per zone, +5% per offer in a row without Rare or better (pity). Base odds per
+card are roughly 64/26/8/2/0.4%; a flawless zone 5 is 50/29/13/5/2%. This replaced the old rule
+(a flawless zone guaranteed one of two "rare" rewards, so good players saw them every boss while
+the strong stat levels were always common). Held rewards show as tier-coloured pills under the
+zone bar (`DMG ●●○`), with full effects on the pause screen. 3+ leaks or 2 shells left still adds Mend. Bosses: odd zones Maelstrom (3-lane vortex wall, one
 segment per lane, spawns krill), even zones Anglerking (one big fish that hops lanes after a
 telegraph, spawns darters). Beating a boss: next zone, +1 shell, palette deepens. Score = kills +
 gates + boss bonus; depth in metres. Target run length 3-5 min.
 
 **Meta progression: sidegrades only, no pay to win.** Four "vents" with roughly equal strength,
 unlocked by achievements, never by grinding currency. Each changes a rule, not only weapon stats:
-- Lantern, the Keeper (default): fast stream; the only vent that reaches Glow IV without a rare
-  reward, and Glow never drains below tier I by time.
+- Lantern, the Keeper (default): fast stream; the only vent that reaches Glow IV without Brighter
+  vent, and Glow never drains below tier I by time.
 - Needle, the Hunter (reach zone 2): heavy piercing shots, Glow capped at II; no Glow gates, every
   gate holds a pearl, and killing Bulwarks, Splitters and Shades feeds +0.25 Glow.
 - Spore, the Gardener (claim 6 gates in a run): 3-shot fan, Glow capped at III; every 5th kill
@@ -153,6 +164,8 @@ zone 5.
 
 Balance as of v3.2 (bot, 8 runs each): median zone 6 for every vent, averages 6.3-8.1, 8-11 min.
 The bot reacts instantly, so humans will die earlier; most bot deaths are now during bosses.
+v3.3 (bot, 12 runs each, cascading rewards): averages 6.8-7.5. The old numbers were held down
+because the bot takes the first card and a flawless zone always put Old souls or Brighter vent there.
 
 ## History
 
@@ -170,6 +183,9 @@ The bot reacts instantly, so humans will die earlier; most bot deaths are now du
   warning, Shade drains on leak, 30 s hatchlings, Early bloom removed, flatter Glow tiers, pressure
   model and retune (Needle damage 2.75 -> 3), inward-only lane jumps, daily seed no longer consumed
   by visual effects.
+- v3.3: feedback "rare rewards drop every round, stat levels feel more valuable". Cascading
+  reward tiers (Common to Legendary), tier per reward level, pity luck, Spring tide, held rewards
+  in the HUD and on the pause screen.
 
 ## Ideas not done yet
 
