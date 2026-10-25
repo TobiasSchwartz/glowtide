@@ -84,13 +84,13 @@ card are roughly 64/26/8/2/0.4%; a flawless zone 5 is 50/29/13/5/2%. This replac
 (a flawless zone guaranteed one of two "rare" rewards, so good players saw them every boss while
 the strong stat levels were always common). Held rewards show as tier-coloured pills under the
 zone bar (`DMG ●●○`), with full effects on the pause screen.
-**Rescue (v3.5).** Two layers, both start with the first lost shell or leak. Luck: +5% on every
-climb per missing shell, so a struggling run rolls better rewards. Comeback cards (pink, no tier
-roll): one after any leak or lost shell, two with 3+ leaks or 2 shells or fewer. Pool: Mend the reef
-(refill shells, needs 3 or fewer), Sunken cache (fill every empty pearl slot with a level II pearl,
-III with Pearl diver; needs an empty slot), Last stand (+75% damage while at 3 shells or fewer, its
-pill dims otherwise), Second wind (the first leak each zone costs no shell, still counts as a leak;
-the pill dims once used). v3.4 waited for 3 leaks or 2 shells, which came too late to save a run. Bosses: odd zones Maelstrom (3-lane vortex wall, one
+**Rescue (v3.6).** Bad runs get better drops instead of extra cards. Luck: +8% on every climb per
+missing shell. Floor: after losing 2 shells one card is at least Uncommon, from 3 lost at least
+Rare. At 2 shells or fewer Mend the reef (refill all shells) comes as a 4th card, so it never takes
+a real reward's place. Sunken cache (fill every empty pearl slot with a level II pearl, III with
+Pearl diver) is a normal Uncommon reward. v3.5's comeback cards (Last stand, Second wind) took one
+of the three slots; the bot showed that a weak rescue card just costs a real reward, so they were
+removed. Bosses: odd zones Maelstrom (3-lane vortex wall, one
 segment per lane, spawns krill), even zones Anglerking (one big fish that hops lanes after a
 telegraph, spawns darters). Beating a boss: next zone, +1 shell, palette deepens. Score = kills +
 gates + boss bonus; depth in metres. Target run length 3-5 min.
@@ -181,6 +181,7 @@ v3.4 (pearl and comeback rewards, Spring tide capped at 3): averages 6.3-6.7, me
 wave retune. The bot picks its first card blindly; a human choosing well does better.
 v3.5: the bot now takes the rarest card (comeback cards only over Commons, Mend when at 2 shells),
 since the first card is now usually a comeback card. Averages 6.0-7.6, medians 6-7.
+v3.6 (rescue as luck, floor and a 4th Mend card): averages 6.7-7.1, medians 6-7.
 
 ## History
 
@@ -206,6 +207,8 @@ since the first card is now usually a comeback card. Averages 6.0-7.6, medians 6
   pool (Mend, Last stand, Second wind).
 - v3.5: feedback "rescue comes too late and too weak". Rescue luck per missing shell, comeback cards
   from the first leak (two when in trouble), Sunken cache, Last stand +75% at 3 shells or fewer.
+- v3.6: feedback "rescue cards take space from real rewards". Comeback cards removed; rescue is
+  luck per missing shell, a tier floor and Mend as a 4th card.
 
 ## Ideas not done yet
 
