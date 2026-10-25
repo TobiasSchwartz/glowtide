@@ -376,7 +376,7 @@ const MEDALS = [ { zone:7, name:'Gold' }, { zone:5, name:'Silver' }, { zone:3, n
 // `max` when picked again; fx(n) is its total effect at level n. t[n] is the tier of level n+1
 // (index into REWARD_TIERS), so the stronger levels of a reward are the rarer ones. `ab` is the short
 // HUD label; rewards without one are used up when taken. `cb` rewards skip the tier roll: they make
-// up the comeback pool, offered after a rough zone.
+// up the comeback pool, offered as soon as a zone went wrong.
 const BOONS = {
   keen:   { ab:'DMG',    name:'Keen shots',    max:3, t:[0,1,2], lab:'Damage',               v:function(n){ return '+' + 25*n + '%'; } },
   quick:  { ab:'RATE',   name:'Quick vent',    max:3, t:[0,1,2], lab:'Fire rate',            v:function(n){ return '+' + 20*n + '%'; } },
@@ -392,13 +392,15 @@ const BOONS = {
   bright: { ab:'CAP',    name:'Brighter vent', max:1, t:[3], fx:function(){ return 'your Glow can reach one tier higher'; } },
   spring: {              name:'Spring tide',   max:1, t:[4], fx:function(){ return andList(state.springPick.map(function(k){ return BOONS[k].name; })) + ' each gain a level'; } },
   mend:   {              name:'Mend the reef', max:99, cb:true, once:true, fx:function(){ return 'refill all shells now'; } },
-  stand:  { ab:'STAND',  name:'Last stand',    max:1, cb:true, fx:function(){ return 'damage +50% while you have 1 or 2 shells'; } },
+  cache:  {              name:'Sunken cache',  max:99, cb:true, once:true, fx:function(){ return 'fill every empty pearl slot with a level ' + ['','I','II','III'][cacheLevel()] + ' pearl'; } },
+  stand:  { ab:'STAND',  name:'Last stand',    max:1, cb:true, fx:function(){ return 'damage +75% while you have 3 shells or fewer'; } },
   wind:   { ab:'WIND',   name:'Second wind',   max:1, cb:true, fx:function(){ return 'the first leak in each zone costs no shell'; } }
 };
 const SPRING_MAX = 3; // Spring tide levels up to this many rewards, lowest level first
 // Cascading loot: every card starts Common and climbs one tier per successful roll; climb[i] is the
 // chance to go from tier i to i+1. Luck adds to every step: a zone without leaks (from zone 2), depth,
-// and a pity bonus for each offer in a row that showed nothing Rare or better.
+// a pity bonus for each offer in a row that showed nothing Rare or better, and each shell you are
+// missing (the rescue: the worse a run goes, the better its rewards).
 const REWARD_TIERS = [
   { name:'Common',    climb:0.36 },
   { name:'Uncommon',  climb:0.28 },
@@ -406,7 +408,7 @@ const REWARD_TIERS = [
   { name:'Epic',      climb:0.16 },
   { name:'Legendary', climb:0 }
 ];
-const REWARD_LUCK = { flawless:0.10, perZone:0.01, pity:0.05 };
+const REWARD_LUCK = { flawless:0.10, perZone:0.01, pity:0.05, perShellLost:0.05 };
 
 const GUIDE_ENTRIES = [
   { sec:'Enemies', id:'enemy:drifter',  name:'Drifter',  text:'Slow and steady. Don\u2019t let it reach the reef.' },
@@ -850,7 +852,7 @@ function recalcStats(){
   if (state.vent === 'tidecaller' && state.flood) s.fireRate *= 1.3;
   s.fireRate *= 1 + 0.2*boon('quick');
   s.damage *= 1 + 0.25*boon('keen');
-  if (lastStand()) s.damage *= 1.5;
+  if (lastStand()) s.damage *= 1.75;
   s.pierce += boon('pierce');
 }
 function boon(k){ return state.boons[k] || 0; }
@@ -863,7 +865,8 @@ function rollSpringPick(){
     .sort(function(a,b){ return a.n - b.n || a.r - b.r; }).slice(0, SPRING_MAX).map(function(o){ return o.k; });
 }
 function andList(a){ return a.length > 1 ? a.slice(0,-1).join(', ') + ' and ' + a[a.length-1] : a.join(''); }
-function lastStand(){ return boon('stand') > 0 && state.player.shells <= 2; }
+function lastStand(){ return boon('stand') > 0 && state.player.shells <= 3; }
+function cacheLevel(){ return Math.min(3, 2 + boon('diver')); }
 function traySlots(){ return CONFIG.TRAY_SLOTS + boon('pocket'); }
 // Shells changed: Last stand may switch on or off.
 function shellsChanged(){ recalcStats(); if (boon('stand')) renderBoons(); }
@@ -872,6 +875,7 @@ function boonOk(k){
   if (k === 'mend') return state.player.shells < CONFIG.BASE_SHELLS-1;
   if (k === 'bright') return glowCap() < CONFIG.GLOW_MAX;
   if (k === 'spring') return springTargets().length >= 2;
+  if (k === 'cache') return state.pearls.indexOf(null) >= 0;
   return true;
 }
 // Roll one card's tier: start at Common, climb while the roll succeeds.
@@ -894,13 +898,18 @@ function offerBoons(){
   const pool = Object.keys(BOONS).filter(function(k){ return boonOk(k) && !BOONS[k].cb; });
   const comeback = Object.keys(BOONS).filter(function(k){ return boonOk(k) && BOONS[k].cb; });
   const flawless = state.zoneLeaks === 0 && state.zone >= 2;
-  const luck = (flawless ? REWARD_LUCK.flawless : 0) + REWARD_LUCK.perZone*(state.zone-1) + REWARD_LUCK.pity*state.dryOffers;
+  const lost = CONFIG.BASE_SHELLS - state.player.shells;
+  const luck = (flawless ? REWARD_LUCK.flawless : 0) + REWARD_LUCK.perZone*(state.zone-1) + REWARD_LUCK.pity*state.dryOffers + REWARD_LUCK.perShellLost*lost;
   const pick = [];
   let note = state.zone >= 2 ? 'Clear a zone without leaks for rarer rewards' : 'From zone 2 on, a zone without leaks makes rewards rarer';
   if (flawless) note = 'Flawless zone: the tide favours you';
+  else if (lost > 0) note = 'Shells lost: the tide sends rarer rewards';
   else if (state.dryOffers) note = 'The tide is turning: rarer rewards are closer';
-  if ((state.zoneLeaks >= 3 || state.player.shells <= 2) && comeback.length){
-    pick.push(comeback[Math.floor(state.rng()*comeback.length)]); note = 'Rough zone: a comeback reward is on offer';
+  // One comeback card after any leak or lost shell, two when the run is in real trouble.
+  const rescue = state.zoneLeaks >= 3 || state.player.shells <= 2 ? 2 : (state.zoneLeaks || lost ? 1 : 0);
+  for (let i = 0; i < rescue && comeback.length; i++){
+    pick.push(comeback.splice(Math.floor(state.rng()*comeback.length), 1)[0]);
+    note = rescue > 1 ? 'Rough zone: two comeback rewards on offer' : 'A comeback reward is on offer';
   }
   while (pick.length < 3 && pool.length){
     const k = pickOfTier(pool, rollTier(luck));
@@ -909,7 +918,9 @@ function offerBoons(){
   }
   state.dryOffers = pick.some(function(k){ return boonTier(k) >= 2; }) ? 0 : state.dryOffers + 1;
   state.springPick = pick.indexOf('spring') >= 0 ? rollSpringPick() : [];
-  if (BOT){ takeBoon(pick[0]); return; }
+  // The bot takes the rarest card, comeback cards only when nothing beats Common (Mend when low).
+  if (BOT){ const val = function(k){ return BOONS[k].cb ? (k === 'mend' && state.player.shells <= 2 ? 9 : 0.5) : boonTier(k); };
+    takeBoon(pick.reduce(function(a, k){ return val(k) > val(a) ? k : a; })); return; }
   $('boonSub').textContent = note;
   const list = $('boonList');
   list.innerHTML = '';
@@ -938,6 +949,7 @@ function takeBoon(k){
   state.boons[k] = boon(k) + 1;
   if (k === 'mend') state.player.shells = CONFIG.BASE_SHELLS;
   if (k === 'pocket'){ state.pearls.push(null); state.pearlLv.push(1); computeLayout(); }
+  if (k === 'cache') for (let i=0;i<state.pearls.length;i++) if (!state.pearls[i]){ state.pearls[i] = pickPearlForGate(); state.pearlLv[i] = cacheLevel(); }
   recalcStats();
   state.screen = 'playing';
   showScreen('playing');
