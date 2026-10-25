@@ -129,6 +129,8 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 #hudBoons:empty{display:none}
 .hb{--tc:#6fa6c4;font-family:'Sora',system-ui,sans-serif;font-size:8px;font-weight:600;letter-spacing:.1em;line-height:1;color:#CBE6F5;background:rgba(4,18,31,.55);border:1px solid var(--tc);border-radius:7px;padding:3px 5px;opacity:.85}
 .hb i{font-style:normal;color:var(--tc);letter-spacing:0;margin-left:3px}
+.hb.cb,.pb.cb,.bcard.cb{--tc:#FF8FA3}.bcard.cb{border-color:var(--tc);box-shadow:0 0 18px rgba(255,143,163,.18)}
+.hb.off{opacity:.35}
 .hb.t1,.pb.t1{--tc:#6CF0A0}.hb.t2,.pb.t2{--tc:#5FB4FF}.hb.t3,.pb.t3{--tc:#C77DFF}.hb.t4,.pb.t4{--tc:var(--amber)}
 .pauseBoons{width:100%;max-width:300px;margin:0 0 14px}
 .pauseBoons:empty{display:none}
@@ -373,20 +375,27 @@ const MEDALS = [ { zone:7, name:'Gold' }, { zone:5, name:'Silver' }, { zone:3, n
 // Boss rewards: pick one of three after each boss, for the current run only. Each levels up to
 // `max` when picked again; fx(n) is its total effect at level n. t[n] is the tier of level n+1
 // (index into REWARD_TIERS), so the stronger levels of a reward are the rarer ones. `ab` is the short
-// HUD label; rewards without one are used up when taken.
+// HUD label; rewards without one are used up when taken. `cb` rewards skip the tier roll: they make
+// up the comeback pool, offered after a rough zone.
 const BOONS = {
   keen:   { ab:'DMG',    name:'Keen shots',    max:3, t:[0,1,2], lab:'Damage',               v:function(n){ return '+' + 25*n + '%'; } },
   quick:  { ab:'RATE',   name:'Quick vent',    max:3, t:[0,1,2], lab:'Fire rate',            v:function(n){ return '+' + 20*n + '%'; } },
   steady: { ab:'GLOW',   name:'Steady glow',   max:3, t:[0,0,1], lab:'Glow fades slower',    v:function(n){ return Math.round((1 - Math.pow(0.65, n))*100) + '%'; } },
   gates:  { ab:'GATE',   name:'Open gates',    max:3, t:[0,0,1], lab:'Gate charge speed',    v:function(n){ return '+' + 40*n + '%'; } },
   burst:  { ab:'BURST',  name:'Coral reef',    max:2, t:[0,1],   lab:'Reef burst reach',     v:function(n){ return (1 + n) + 'x'; } },
-  mend:   {              name:'Mend the reef', max:99, t:[0], once:true, fx:function(){ return 'refill all shells now'; } },
   hatch:  { ab:'SOUL',   name:'Old souls',     max:2, t:[1,2],   lab:'Hatchlings stay', v:function(n){ return '+' + 50*n + '%'; } },
   side:   { ab:'SIDE',   name:'Side vents',    max:3, t:[1,2,3], lab:'Shots into both other lanes', v:function(n){ return 'every ' + ['','4th','3rd','2nd'][n] + ' volley'; } },
   pierce: { ab:'PIERCE', name:'Needlepoint',   max:2, t:[2,3],   lab:'Extra creatures pierced', v:function(n){ return '+' + n; } },
+  oyster: { ab:'OYSTER', name:'Oyster bed',    max:3, t:[0,1,2], lab:'Extra pearl gates', v:function(n){ return '+' + [0,10,15,20][n] + '%'; } },
+  pocket: { ab:'POCKET', name:'Deep pockets',  max:1, t:[2], fx:function(){ return 'a 4th pearl slot'; } },
+  diver:  { ab:'DIVER',  name:'Pearl diver',   max:1, t:[3], fx:function(){ return 'pearls arrive one level higher'; } },
   bright: { ab:'CAP',    name:'Brighter vent', max:1, t:[3], fx:function(){ return 'your Glow can reach one tier higher'; } },
-  spring: {              name:'Spring tide',   max:1, t:[4], fx:function(){ const n = springTargets().map(function(k){ return BOONS[k].name; }); return n.slice(0,-1).join(', ') + ' and ' + n[n.length-1] + ' each gain a level'; } }
+  spring: {              name:'Spring tide',   max:1, t:[4], fx:function(){ return andList(state.springPick.map(function(k){ return BOONS[k].name; })) + ' each gain a level'; } },
+  mend:   {              name:'Mend the reef', max:99, cb:true, once:true, fx:function(){ return 'refill all shells now'; } },
+  stand:  { ab:'STAND',  name:'Last stand',    max:1, cb:true, fx:function(){ return 'damage +50% while you have 1 or 2 shells'; } },
+  wind:   { ab:'WIND',   name:'Second wind',   max:1, cb:true, fx:function(){ return 'the first leak in each zone costs no shell'; } }
 };
+const SPRING_MAX = 3; // Spring tide levels up to this many rewards, lowest level first
 // Cascading loot: every card starts Common and climbs one tier per successful roll; climb[i] is the
 // chance to go from tier i to i+1. Luck adds to every step: a zone without leaks (from zone 2), depth,
 // and a pity bonus for each offer in a row that showed nothing Rare or better.
@@ -534,7 +543,7 @@ const state = {
   nextId:1,
   score:0, kills:0, gatesClaimed:0, clones:0, bossesKilled:0,
   zone:1, tZone:0, phase:'waves',
-  waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, dryOffers:0, mods:[], vent:'lantern', gardenKills:0, flood:false,
+  waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, dryOffers:0, springPick:[], windUsed:false, mods:[], vent:'lantern', gardenKills:0, flood:false,
   glow:0, glowTier:0, glowGraceUntil:0, glowToastAt:-99, pearls:[null,null,null],
   frostUntil:0, stormUntil:0, frostMax:1, stormMax:1, stormLv:1, pearlLv:[0,0,0], pets:[], petCd:0, gateRetry:0,
   volleyIndex:0, fireCd:0,
@@ -701,13 +710,15 @@ function computeLayout(){
   const L = state.layout;
   L.safeB = safeB;
   const base = state.H - safeB - 10;
-  const R = CONFIG.TRAY_SLOT_R;
+  const n = traySlots();
   const gap = CONFIG.TRAY_GAP;
-  const trayW = CONFIG.TRAY_SLOTS*R*2 + (CONFIG.TRAY_SLOTS-1)*gap;
+  // A 4th slot (Deep pockets) shrinks the slots so the shells keep their room on narrow phones.
+  const R = Math.min(CONFIG.TRAY_SLOT_R, (state.W*0.6 - (n-1)*gap)/(2*n));
+  const trayW = n*R*2 + (n-1)*gap;
   const trayLeft = Math.max(60, state.W - 12 - trayW);
   L.trayR = R;
   L.trayCy = base - R;
-  for (let i=0;i<CONFIG.TRAY_SLOTS;i++) L.trayCx[i] = trayLeft + R + i*(R*2+gap);
+  for (let i=0;i<n;i++) L.trayCx[i] = trayLeft + R + i*(R*2+gap);
   const shellRight = trayLeft - 18;
   L.shellY = L.trayCy - 2;
   L.shellGap = clamp((shellRight - 28)/Math.max(1, CONFIG.BASE_SHELLS-1), 16, 26);
@@ -791,11 +802,12 @@ function resetRun(daily){
   state.score = 0; state.kills = 0; state.gatesClaimed = 0; state.clones = 0; state.bossesKilled = 0;
   state.zone = 1; state.tZone = 0; state.phase = 'waves';
   state.waveTimer = 2.0; state.gateTimer = CONFIG.GATE_FIRST;
-  state.lastWaveLanes.length = 0; state.boss = null; state.advanceTimer = 0; state.boons = {}; state.zoneLeaks = 0; state.dryOffers = 0;
+  state.lastWaveLanes.length = 0; state.boss = null; state.advanceTimer = 0; state.boons = {}; state.zoneLeaks = 0; state.dryOffers = 0; state.springPick = []; state.windUsed = false;
   state.glow = 0; state.glowTier = 0; state.glowGraceUntil = 0; state.glowToastAt = -99;
   state.pearls = mod('armed') ? ['storm','ink','frost'] : [null,null,null];
   state.frostUntil = 0; state.stormUntil = 0; state.stormLv = 1; state.pets = []; state.petCd = 0; state.gateRetry = 0;
   state.pearlLv = [1,1,1];
+  computeLayout();
   state.volleyIndex = 0; state.fireCd = 0;
   state.shake = 0; state.laneFlash = [0,0,0]; state.dangerFlash = 0;
   state.toasts.length = 0; state.banner = null; state.nameFlash = null;
@@ -838,12 +850,23 @@ function recalcStats(){
   if (state.vent === 'tidecaller' && state.flood) s.fireRate *= 1.3;
   s.fireRate *= 1 + 0.2*boon('quick');
   s.damage *= 1 + 0.25*boon('keen');
+  if (lastStand()) s.damage *= 1.5;
   s.pierce += boon('pierce');
 }
 function boon(k){ return state.boons[k] || 0; }
 function glowCap(){ return Math.min(CONFIG.GLOW_MAX, VENT_DEFS[state.vent].glowMax + boon('bright')); }
-function boonTier(k){ const t = BOONS[k].t; return t[Math.min(boon(k), t.length-1)]; }
+function boonTier(k){ const t = BOONS[k].t; return t ? t[Math.min(boon(k), t.length-1)] : -1; }
 function springTargets(){ return Object.keys(BOONS).filter(function(k){ return k !== 'spring' && !BOONS[k].once && boon(k) > 0 && boon(k) < BOONS[k].max; }); }
+// The rewards Spring tide would level: lowest level first, ties at random.
+function rollSpringPick(){
+  return springTargets().map(function(k){ return { k:k, n:boon(k), r:state.rng() }; })
+    .sort(function(a,b){ return a.n - b.n || a.r - b.r; }).slice(0, SPRING_MAX).map(function(o){ return o.k; });
+}
+function andList(a){ return a.length > 1 ? a.slice(0,-1).join(', ') + ' and ' + a[a.length-1] : a.join(''); }
+function lastStand(){ return boon('stand') > 0 && state.player.shells <= 2; }
+function traySlots(){ return CONFIG.TRAY_SLOTS + boon('pocket'); }
+// Shells changed: Last stand may switch on or off.
+function shellsChanged(){ recalcStats(); if (boon('stand')) renderBoons(); }
 function boonOk(k){
   if (boon(k) >= BOONS[k].max) return false;
   if (k === 'mend') return state.player.shells < CONFIG.BASE_SHELLS-1;
@@ -868,15 +891,16 @@ function pickOfTier(pool, tier){
   return null;
 }
 function offerBoons(){
-  const pool = Object.keys(BOONS).filter(boonOk);
+  const pool = Object.keys(BOONS).filter(function(k){ return boonOk(k) && !BOONS[k].cb; });
+  const comeback = Object.keys(BOONS).filter(function(k){ return boonOk(k) && BOONS[k].cb; });
   const flawless = state.zoneLeaks === 0 && state.zone >= 2;
   const luck = (flawless ? REWARD_LUCK.flawless : 0) + REWARD_LUCK.perZone*(state.zone-1) + REWARD_LUCK.pity*state.dryOffers;
-  const pick = [], climbs = [];
+  const pick = [];
   let note = state.zone >= 2 ? 'Clear a zone without leaks for rarer rewards' : 'From zone 2 on, a zone without leaks makes rewards rarer';
   if (flawless) note = 'Flawless zone: the tide favours you';
   else if (state.dryOffers) note = 'The tide is turning: rarer rewards are closer';
-  if ((state.zoneLeaks >= 3 || state.player.shells <= 2) && pool.indexOf('mend') >= 0){
-    pick.push(pool.splice(pool.indexOf('mend'),1)[0]); climbs.push(0); note = 'Rough zone: mending is on offer';
+  if ((state.zoneLeaks >= 3 || state.player.shells <= 2) && comeback.length){
+    pick.push(comeback[Math.floor(state.rng()*comeback.length)]); note = 'Rough zone: a comeback reward is on offer';
   }
   while (pick.length < 3 && pool.length){
     const k = pickOfTier(pool, rollTier(luck));
@@ -884,6 +908,7 @@ function offerBoons(){
     pick.push(k);
   }
   state.dryOffers = pick.some(function(k){ return boonTier(k) >= 2; }) ? 0 : state.dryOffers + 1;
+  state.springPick = pick.indexOf('spring') >= 0 ? rollSpringPick() : [];
   if (BOT){ takeBoon(pick[0]); return; }
   $('boonSub').textContent = note;
   const list = $('boonList');
@@ -898,7 +923,8 @@ function offerBoons(){
     const chip = b.querySelector('.chip');
     const show = function(t){ b.className = 'bcard t' + t; chip.textContent = REWARD_TIERS[t].name + lv; };
     // The reveal climbs the tiers one step at a time, like the roll did.
-    if (reduceMotion || !tier) show(tier);
+    if (B.cb){ b.className = 'bcard cb'; chip.textContent = 'Comeback'; }
+    else if (reduceMotion || !tier) show(tier);
     else { show(0); for (let t = 1; t <= tier; t++) setTimeout(show, 160 + i*120 + t*230, t); }
     b.addEventListener('click', function(){ takeBoon(k); });
     list.appendChild(b);
@@ -908,9 +934,10 @@ function offerBoons(){
 }
 function takeBoon(k){
   if (!BOT && state.screen !== 'boon') return; // a double tap must not skip a zone
-  if (k === 'spring') springTargets().forEach(function(j){ state.boons[j]++; });
+  if (k === 'spring') state.springPick.forEach(function(j){ state.boons[j]++; });
   state.boons[k] = boon(k) + 1;
   if (k === 'mend') state.player.shells = CONFIG.BASE_SHELLS;
+  if (k === 'pocket'){ state.pearls.push(null); state.pearlLv.push(1); computeLayout(); }
   recalcStats();
   state.screen = 'playing';
   showScreen('playing');
@@ -923,7 +950,8 @@ function renderBoons(){
   Object.keys(BOONS).forEach(function(k){
     const B = BOONS[k], n = boon(k);
     if (!n || !B.ab) return;
-    const cls = 't' + B.t[Math.min(n, B.t.length) - 1];
+    const off = (k === 'stand' && !lastStand()) || (k === 'wind' && state.windUsed);
+    const cls = (B.cb ? 'cb' : 't' + B.t[Math.min(n, B.t.length) - 1]) + (off ? ' off' : '');
     const dots = B.max > 1 ? '●'.repeat(n) + '○'.repeat(B.max - n) : '';
     let fx = B.v ? B.lab + ' ' + B.v(n) : B.fx();
     fx = fx.charAt(0).toUpperCase() + fx.slice(1);
@@ -1013,7 +1041,9 @@ function gameOver(){
 function nextZone(){
   state.zone++;
   state.zoneLeaks = 0;
+  state.windUsed = false;
   state.player.shells = Math.min(CONFIG.BASE_SHELLS, state.player.shells + (mod('cracked') ? 2 : 1));
+  shellsChanged();
   state.phase = 'waves';
   state.tZone = 0;
   state.waveTimer = 1.6;
@@ -1064,6 +1094,8 @@ function spawnClone(src, gate){
 // The quadratic term outgrows boss rewards, so every run ends eventually.
 function hpMul(){ const z = state.zone-1; return (1 + CONFIG.HP_SCALE*z + CONFIG.HP_SCALE_SQ*z*z) * (mod('heavy') ? 1.3 : 1); }
 function waveInterval(){ return Math.max(CONFIG.WAVE_INTERVAL_MIN, CONFIG.WAVE_INTERVAL - CONFIG.WAVE_INTERVAL_DEC*(state.zone-1)); }
+// Oyster bed: this many more gates, all of the extras pearl gates (Glow gates stay as common).
+function oysterExtra(){ return [0,0.10,0.15,0.20][boon('oyster')]; }
 function gateInterval(){ return Math.max(CONFIG.GATE_INTERVAL_MIN, CONFIG.GATE_INTERVAL - CONFIG.GATE_INTERVAL_DEC*(state.zone-1)); }
 // A lane next to l; edge lanes only step inward (no jumping across the screen).
 function neighborLane(l){ return l === 0 ? 1 : (l === CONFIG.LANES-1 ? l-1 : (state.rng() < 0.5 ? l-1 : l+1)); }
@@ -1139,7 +1171,7 @@ function spawnGate(){
   const lane = calm[Math.floor(state.rng()*calm.length)];
   const noGlow = mod('blacktide') || state.vent === 'needle';
   const kind = (state.zone >= 2 || mod('rot')) && state.rng() < CONFIG.ROT_CHANCE*(mod('rot') ? 3 : 1) ? 'rot'
-    : (noGlow || state.rng() < CONFIG.GATE_PEARL_CHANCE ? 'pearl' : 'glow');
+    : (noGlow || state.rng() < (CONFIG.GATE_PEARL_CHANCE + oysterExtra())/(1 + oysterExtra()) ? 'pearl' : 'glow');
   const x = laneX(lane), y = state.topY + CONFIG.GATE_H*0.5;
   state.gates.push({
     id: state.nextId++, lane: lane, x: x, y: y,
@@ -1366,7 +1398,8 @@ function processDeaths(){
 }
 function leak(e){
   const lane = e.lane;
-  state.player.shells -= Math.max(1, e.leak);
+  if (boon('wind') && !state.windUsed){ state.windUsed = true; toast('Second wind · no shell lost', '#FF8FA3'); renderBoons(); }
+  else { state.player.shells -= Math.max(1, e.leak); shellsChanged(); }
   // Reef burst: the leaking creature explodes and takes the crowd behind it along,
   // so one breach costs a shell instead of the whole horde.
   const burstR = CONFIG.LEAK_BURST_RANGE*state.playH*(1 + boon('burst'));
@@ -1464,6 +1497,7 @@ function usePearl(i){
     state.ripples.push({ x:laneX(lane), y:state.reefY - state.playH*0.35, t:0.5, max:0.5, rgb:'154,107,255', r: state.playH*0.3 });
   } else if (key === 'mend'){
     state.player.shells = Math.min(CONFIG.BASE_SHELLS, state.player.shells + v);
+    shellsChanged();
     spawnBurst(state.player.x, state.reefY-10, '255,201,222', 16, 110);
   }
   return true;
@@ -1484,7 +1518,7 @@ function claimGate(g){
     spawnBurst(state.player.x, state.reefY - 10, '143,247,210', 24, 140);
   }
   if (g.kind === 'pearl'){
-    addPearl(g.pearl, stage);
+    addPearl(g.pearl, Math.min(3, stage + boon('diver')));
   } else if (g.kind === 'rot'){
     addGlow(CONFIG.ROT_GLOW);
     for (let k=0;k<g.pack.length;k++){
@@ -1722,7 +1756,7 @@ function update(dt){
     state.tZone += dt;
   }
   state.gateTimer -= dt;
-  if (state.gateTimer <= 0){ state.gateTimer = gateInterval(); spawnGate(); }
+  if (state.gateTimer <= 0){ state.gateTimer = gateInterval()/(1 + oysterExtra()); spawnGate(); }
   if (state.vent === 'tidecaller' && (Math.floor(state.time/10) % 2 === 1) !== state.flood){
     state.flood = !state.flood;
     recalcStats();
@@ -2360,7 +2394,7 @@ function drawPearlTray(){
   const L = state.layout;
   const R = L.trayR;
   const slotFont = "600 8px Sora, system-ui, sans-serif";
-  for (let i=0;i<CONFIG.TRAY_SLOTS;i++){
+  for (let i=0;i<traySlots();i++){
     const key = state.pearls[i];
     const cx = L.trayCx[i], cy = L.trayCy;
     ctx.save();
@@ -2891,7 +2925,7 @@ let gesture = null;
 function pearlSlotAt(x, y){
   const L = state.layout;
   const rr2 = (L.trayR + 4)*(L.trayR + 4);
-  for (let i=0;i<CONFIG.TRAY_SLOTS;i++){
+  for (let i=0;i<traySlots();i++){
     const dx = x - L.trayCx[i], dy = y - L.trayCy;
     if (dx*dx + dy*dy <= rr2) return i;
   }

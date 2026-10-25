@@ -70,16 +70,24 @@ run-only rewards (`BOONS`). Each levels up to a max when picked again and its ca
 **Cascading loot (v3.3).** Rewards have five tiers: Common, Uncommon, Rare, Epic, Legendary. A
 reward's tier belongs to its next level (`t` per level), so stronger levels are rarer: Keen shots
 and Quick vent go Common -> Uncommon -> Rare, Side vents Uncommon -> Rare -> Epic, Needlepoint Rare
--> Epic. Utility rewards (Steady glow, Open gates, Coral reef, Mend) stay mostly Common, Old souls is
-Uncommon/Rare, Brighter vent Epic, and Spring tide (every reward you hold gains a level, needs two
-upgradable ones) is the only Legendary. Each card rolls its tier as a cascade: start Common, climb
+-> Epic. Utility rewards (Steady glow, Open gates, Coral reef) stay mostly Common, Old souls is
+Uncommon/Rare, Brighter vent Epic. Pearl rewards: Oyster bed (10/15/20% more gates, all extras pearl
+gates, so Glow gates stay as common; Common -> Rare), Deep pockets (4th tray slot, Rare; the tray
+slots shrink to keep the shells' room on narrow phones), Pearl diver (pearls arrive one level
+higher, Epic). Spring tide is the only Legendary: up to 3 rewards you hold gain a level, lowest
+level first, ties at random, named on the card (v3.3 levelled all of them, so one long run maxed
+everything); it needs two upgradable rewards. Each card rolls its tier as a cascade: start Common, climb
 one tier per success (36/28/22/16%), then draw a reward of that tier (falling back to the nearest
 lower, then higher, tier when none is left). Luck adds to every climb: +10% for a zone without
 leaks (zone 2+), +1% per zone, +5% per offer in a row without Rare or better (pity). Base odds per
 card are roughly 64/26/8/2/0.4%; a flawless zone 5 is 50/29/13/5/2%. This replaced the old rule
 (a flawless zone guaranteed one of two "rare" rewards, so good players saw them every boss while
 the strong stat levels were always common). Held rewards show as tier-coloured pills under the
-zone bar (`DMG ●●○`), with full effects on the pause screen. 3+ leaks or 2 shells left still adds Mend. Bosses: odd zones Maelstrom (3-lane vortex wall, one
+zone bar (`DMG ●●○`), with full effects on the pause screen.
+**Comeback pool.** 3+ leaks in the zone or 2 shells or fewer puts one comeback card (pink, no tier
+roll) in the offer: Mend the reef (refill shells, needs 3 or fewer), Last stand (+50% damage while
+at 1-2 shells, its pill dims otherwise), Second wind (the first leak each zone costs no shell, still
+counts as a leak; the pill dims once used). Comeback rewards never come from the luck roll. Bosses: odd zones Maelstrom (3-lane vortex wall, one
 segment per lane, spawns krill), even zones Anglerking (one big fish that hops lanes after a
 telegraph, spawns darters). Beating a boss: next zone, +1 shell, palette deepens. Score = kills +
 gates + boss bonus; depth in metres. Target run length 3-5 min.
@@ -166,6 +174,8 @@ Balance as of v3.2 (bot, 8 runs each): median zone 6 for every vent, averages 6.
 The bot reacts instantly, so humans will die earlier; most bot deaths are now during bosses.
 v3.3 (bot, 12 runs each, cascading rewards): averages 6.8-7.5. The old numbers were held down
 because the bot takes the first card and a flawless zone always put Old souls or Brighter vent there.
+v3.4 (pearl and comeback rewards, Spring tide capped at 3): averages 6.3-6.7, medians 6-7, so no
+wave retune. The bot picks its first card blindly; a human choosing well does better.
 
 ## History
 
@@ -186,6 +196,9 @@ because the bot takes the first card and a flawless zone always put Old souls or
 - v3.3: feedback "rare rewards drop every round, stat levels feel more valuable". Cascading
   reward tiers (Common to Legendary), tier per reward level, pity luck, Spring tide, held rewards
   in the HUD and on the pause screen.
+- v3.4: feedback "Spring tide maxes everything, want comebacks and pearl perks, no cursed trade-offs".
+  Spring tide capped at 3 (lowest level first), Oyster bed, Deep pockets, Pearl diver, comeback
+  pool (Mend, Last stand, Second wind).
 
 ## Ideas not done yet
 
