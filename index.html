@@ -78,8 +78,24 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 @media (prefers-reduced-motion:reduce){.dcard{transition:none}.dcard:not(.on){transform:none}}
 #toast{position:fixed;left:0;right:0;top:0;transform:translateY(-50%);z-index:15;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
 .msg{font-family:'Unbounded',system-ui,sans-serif;font-size:14px;color:#FFE9B8;background:rgba(20,42,60,.85);border:1px solid var(--amber);border-radius:12px;padding:9px 16px;box-shadow:0 0 22px rgba(255,215,106,.25)}
-.govRow{display:flex;justify-content:space-between;font-size:14px;padding:7px 2px;border-bottom:1px solid rgba(27,58,92,.6);max-width:320px;width:100%}
-.govRow b{font-family:'Unbounded',system-ui,sans-serif;font-weight:700;color:#EAFBFF}
+.ovScore{font-family:'Unbounded',system-ui,sans-serif;font-weight:900;font-size:38px;color:#EAFBFF;text-shadow:0 0 18px rgba(79,240,224,.45);line-height:1.1}
+.ovBest{font-size:12px;color:#6fa6c4;margin:4px 0 12px;display:flex;gap:8px;align-items:baseline}
+.ovBest b{color:#CBE6F5;font-weight:600}
+.ovBest .newbest{margin:0;font-size:11px}
+.ovGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;max-width:340px}
+.ovTile{background:rgba(10,37,64,.7);border:1px solid #1d4468;border-radius:12px;padding:8px 6px;text-align:center;display:flex;flex-direction:column;gap:3px}
+.ovTile b{font-family:'Unbounded',system-ui,sans-serif;font-weight:700;font-size:17px;color:#EAFBFF}
+.ovTile span{font-size:10px;color:#6fa6c4;letter-spacing:.04em}
+.ovTile i{font-style:normal}
+.ovSec{width:100%;max-width:340px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#5f86a6;font-weight:600;margin:14px 0 6px;display:flex;justify-content:space-between;align-items:center}
+.ovKey{letter-spacing:.04em;text-transform:none;font-weight:400;display:flex;gap:5px;align-items:center}
+.ovKey i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-left:4px}
+.ovZones{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:340px}
+.ovZones span{min-width:22px;height:20px;border-radius:6px;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;color:#04121F}
+.z0{background:var(--amber)}.z1{background:#4FB8C9}.z2{background:var(--coral)}
+.ovZones .zl{background:transparent;border:1.5px solid var(--danger);color:var(--danger)}
+.ovBuild{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:340px}
+.ovBuild .hb{font-size:9px;opacity:1}
 #over h2,#pause h2,#boon h2{font-family:'Unbounded',system-ui,sans-serif;font-weight:900;margin:0 0 4px;color:#EAFBFF;font-size:28px}
 .sub{font-size:12px;color:#6fa6c4;letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
 .newbest{font-family:'Unbounded',system-ui,sans-serif;font-size:13px;color:var(--amber);margin:10px 0}
@@ -204,12 +220,20 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 <div id="over" class="screen ui hidden">
   <h2>GAME OVER</h2>
   <div class="sub" id="ovSub">The dark closed in</div>
-  <div class="govRow"><span>Score</span><b id="ovScore">0</b></div>
-  <div class="govRow"><span>Depth</span><b id="ovDepth">0m</b></div>
-  <div class="govRow"><span>Kills</span><b id="ovKills">0</b></div>
-  <div class="govRow"><span>Gates claimed</span><b id="ovGates">0</b></div>
-  <div class="govRow"><span id="ovBestLbl">Best</span><b id="ovBest">0</b></div>
-  <div class="newbest hidden" id="ovNewBest">NEW BEST</div>
+  <div class="ovScore" id="ovScore">0</div>
+  <div class="ovBest"><span class="newbest hidden" id="ovNewBest">NEW BEST</span><span id="ovBestLbl">Best</span> <b id="ovBest">0</b></div>
+  <div class="ovGrid">
+    <div class="ovTile"><b id="ovZone">1</b><span>Zone · <i id="ovDepth">0m</i></span></div>
+    <div class="ovTile"><b id="ovTime">0:00</b><span>Time</span></div>
+    <div class="ovTile"><b id="ovBosses">0</b><span>Bosses beaten</span></div>
+    <div class="ovTile"><b id="ovKills">0</b><span>Kills</span></div>
+    <div class="ovTile"><b id="ovGates">0</b><span>Gates claimed</span></div>
+    <div class="ovTile"><b id="ovPearls">0</b><span>Pearls used</span></div>
+  </div>
+  <div class="ovSec">Zones <span class="ovKey"><i class="z0"></i>flawless <i class="z1"></i>leaks <i class="z2"></i>3+ leaks</span></div>
+  <div id="ovZones" class="ovZones"></div>
+  <div class="ovSec" id="ovBuildSec">Your build</div>
+  <div id="ovBuild" class="ovBuild"></div>
   <div id="ovUnlocks"></div>
   <div class="rowbtns" style="max-width:340px">
     <button id="btnRetry">Retry</button>
@@ -544,7 +568,7 @@ const state = {
   nextId:1,
   score:0, kills:0, gatesClaimed:0, clones:0, bossesKilled:0,
   zone:1, tZone:0, phase:'waves',
-  waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, dryOffers:0, springPick:[], flareUsed:false, mods:[], vent:'lantern', gardenKills:0, flood:false,
+  waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, dryOffers:0, springPick:[], flareUsed:false, playTime:0, pearlsUsed:0, zoneLog:[], mods:[], vent:'lantern', gardenKills:0, flood:false,
   glow:0, glowTier:0, glowGraceUntil:0, glowToastAt:-99, pearls:[null,null,null],
   frostUntil:0, stormUntil:0, frostMax:1, stormMax:1, stormLv:1, pearlLv:[0,0,0], pets:[], petCd:0, gateRetry:0,
   volleyIndex:0, fireCd:0,
@@ -791,7 +815,7 @@ function resetRun(daily){
     state.seed = (Date.now() ^ (Math.random()*0xffffffff)) >>> 0;
   }
   state.rng = mulberry32(state.seed);
-  state.time = 0;
+  state.time = 0; state.playTime = 0; state.pearlsUsed = 0; state.zoneLog = [];
   state.mods = daily ? dailyMods() : [];
   state.vent = VENT_DEFS[save.vent] ? save.vent : 'lantern';
   state.gardenKills = 0; state.flood = false;
@@ -1016,14 +1040,28 @@ function gameOver(){
   if (state.bossesKilled >= 2 && save.unlocked.indexOf('tidecaller')<0){ save.unlocked.push('tidecaller'); newly.push('tidecaller'); }
   persist();
 
-  $('ovScore').textContent = String(state.score);
+  const num = function(n){ return n.toLocaleString('en-US'); };
+  const t = Math.floor(state.playTime);
+  $('ovScore').textContent = num(state.score);
+  $('ovZone').textContent = String(state.zone);
   $('ovDepth').textContent = depth+'m';
-  $('ovKills').textContent = String(state.kills);
+  $('ovTime').textContent = Math.floor(t/60) + ':' + String(t%60).padStart(2,'0');
+  $('ovBosses').textContent = String(state.bossesKilled);
+  $('ovKills').textContent = num(state.kills);
   $('ovGates').textContent = String(state.gatesClaimed);
-  $('ovBest').textContent = String(Math.max(prevBest, state.score));
+  $('ovPearls').textContent = String(state.pearlsUsed);
+  $('ovBest').textContent = num(Math.max(prevBest, state.score));
+  // One chip per zone: cleared ones coloured by leaks, the last one is where the run ended.
+  $('ovZones').innerHTML = state.zoneLog.map(function(n, i){
+    return '<span class="' + (n ? (n >= 3 ? 'z2' : 'z1') : 'z0') + '">' + (i+1) + '</span>';
+  }).join('') + '<span class="zl">' + state.zone + '</span>';
+  renderBoons();
+  $('ovBuild').innerHTML = hudBoonsEl.innerHTML;
+  $('ovBuildSec').classList.toggle('hidden', !hudBoonsEl.innerHTML);
+  const lostTo = state.boss ? 'Lost to the ' + (state.boss.kind === 'angler' ? 'Angler King' : 'Maelstrom') : 'Overrun';
   $('ovBestLbl').textContent = state.daily ? "Today's best" : 'Best with ' + VENT_DEFS[modeKey].name;
   $('ovNewBest').classList.toggle('hidden', !newBest);
-  $('ovSub').textContent = state.daily ? ('Daily '+todayStr() + (medal ? ' · ' + medal.name + ' medal' : '')) : 'The dark closed in';
+  $('ovSub').textContent = state.daily ? ('Daily '+todayStr() + (medal ? ' · ' + medal.name + ' medal' : '')) : lostTo + ' · ' + VENT_DEFS[state.vent].name;
   shareText = 'Glowtide daily ' + todayStr() + ' · ' + state.mods.map(function(k){ return DAILY_MODS[k].name; }).join(' + ') +
     ' · zone ' + state.zone + ' · ' + state.score + (medal ? ' · ' + medal.name : '');
   $('btnShare').classList.toggle('hidden', !state.daily);
@@ -1040,6 +1078,7 @@ function gameOver(){
   showScreen('gameover');
 }
 function nextZone(){
+  state.zoneLog.push(state.zoneLeaks);
   state.zone++;
   state.zoneLeaks = 0;
   state.flareUsed = false;
@@ -1468,6 +1507,7 @@ function usePearl(i){
   const lane = state.player.lane;
   const L = state.pearlLv[i] || 1, v = P.lv[L-1];
   state.pearls[i] = null;
+  state.pearlsUsed++;
   state.nameFlash = { text:P.name, t:0.6, max:0.6, col:P.col };
   Audio_.claim();
   Audio_.tone(1050,0.16,'sine',0.06,1500);
@@ -1748,6 +1788,7 @@ function updateSpawning(dt){
 }
 function update(dt){
   state.time += dt;
+  state.playTime += dt;
   // Drain grows with Glow: high tiers need upkeep, low tiers stay stable. A claim pauses it briefly.
   const glowFloor = state.vent === 'lantern' && state.glow >= 1 ? 1 : 0;
   if (state.glow > glowFloor && state.time >= state.glowGraceUntil){

@@ -216,6 +216,8 @@ further: averages 7.1-8.4, 9-11 min, best runs zone 10-21.
   from the first leak (two when in trouble), Sunken cache, Last stand +75% at 3 shells or fewer.
 - v3.6: feedback "rescue cards take space from real rewards". Comeback cards removed; rescue is
   luck per missing shell, a tier floor and Mend as a 4th card.
+- v3.8: result screen: score hero, tiles (zone, time played, bosses, kills, gates, pearls used),
+  one chip per zone coloured by leaks, the run's build, cause of death in the subtitle.
 - v3.7: feedback "too hard, no comebacks, Pearl diver looks broken". Reef flare, flatter HP curve,
   pearl gate labels show the pearl level.
 
