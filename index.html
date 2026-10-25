@@ -280,6 +280,7 @@ const CONFIG = {
   GLOW_FULL_EVERY: 3,
   GLOW_TWIN_EVERY: 2, // Twin shot adds a bullet to every Nth volley
   SHADE_DRAIN: 1,
+  FLARE_PUSH: 0.45, // Reef flare: once per zone, the leak that leaves 2 shells or fewer pushes every creature back
   POLYP_RATE_MUL: 0.7,
   FROST_SLOW: 0.5,
   FROST_BOSS_SLOW: 0.25,
@@ -306,7 +307,7 @@ const CONFIG = {
   KRILL_CLUSTER_GAP: 6,
   ZONE_DURATION: 60,
   HP_SCALE: 0.2,
-  HP_SCALE_SQ: 0.02,
+  HP_SCALE_SQ: 0.01,
   LEAK_BURST_RANGE: 0.22,
   LEAK_BURST_DMG: 6,
   MAELSTROM_HP: 45,
@@ -543,7 +544,7 @@ const state = {
   nextId:1,
   score:0, kills:0, gatesClaimed:0, clones:0, bossesKilled:0,
   zone:1, tZone:0, phase:'waves',
-  waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, dryOffers:0, springPick:[], mods:[], vent:'lantern', gardenKills:0, flood:false,
+  waveTimer:0, gateTimer:0, lastWaveLanes:[], boss:null, advanceTimer:0, boons:{}, dryOffers:0, springPick:[], flareUsed:false, mods:[], vent:'lantern', gardenKills:0, flood:false,
   glow:0, glowTier:0, glowGraceUntil:0, glowToastAt:-99, pearls:[null,null,null],
   frostUntil:0, stormUntil:0, frostMax:1, stormMax:1, stormLv:1, pearlLv:[0,0,0], pets:[], petCd:0, gateRetry:0,
   volleyIndex:0, fireCd:0,
@@ -802,7 +803,7 @@ function resetRun(daily){
   state.score = 0; state.kills = 0; state.gatesClaimed = 0; state.clones = 0; state.bossesKilled = 0;
   state.zone = 1; state.tZone = 0; state.phase = 'waves';
   state.waveTimer = 2.0; state.gateTimer = CONFIG.GATE_FIRST;
-  state.lastWaveLanes.length = 0; state.boss = null; state.advanceTimer = 0; state.boons = {}; state.zoneLeaks = 0; state.dryOffers = 0; state.springPick = [];
+  state.lastWaveLanes.length = 0; state.boss = null; state.advanceTimer = 0; state.boons = {}; state.zoneLeaks = 0; state.dryOffers = 0; state.springPick = []; state.flareUsed = false;
   state.glow = 0; state.glowTier = 0; state.glowGraceUntil = 0; state.glowToastAt = -99;
   state.pearls = mod('armed') ? ['storm','ink','frost'] : [null,null,null];
   state.frostUntil = 0; state.stormUntil = 0; state.stormLv = 1; state.pets = []; state.petCd = 0; state.gateRetry = 0;
@@ -1041,6 +1042,7 @@ function gameOver(){
 function nextZone(){
   state.zone++;
   state.zoneLeaks = 0;
+  state.flareUsed = false;
   state.player.shells = Math.min(CONFIG.BASE_SHELLS, state.player.shells + (mod('cracked') ? 2 : 1));
   state.phase = 'waves';
   state.tZone = 0;
@@ -1421,7 +1423,17 @@ function leak(e){
   const i = state.enemies.indexOf(e);
   if (i >= 0) state.enemies.splice(i,1);
   e.processed = true;
-  if (state.player.shells <= 0){ state.player.shells = 0; gameOver(); }
+  if (state.player.shells <= 0){ state.player.shells = 0; gameOver(); return; }
+  if (state.player.shells <= 2 && !state.flareUsed) reefFlare();
+}
+// Reef flare: a breather when the reef is nearly lost, so a bad zone can still be turned around.
+function reefFlare(){
+  state.flareUsed = true;
+  for (let i=0;i<state.enemies.length;i++){ const o = state.enemies[i]; if (!o.boss) o.y -= CONFIG.FLARE_PUSH*state.playH; }
+  state.ripples.push({ x:state.W/2, y:state.reefY, t:0.9, max:0.9, rgb:'255,201,222', r:state.playH*0.5 });
+  spawnBurst(state.W/2, state.reefY - 40, '255,201,222', 30, 180);
+  toast('Reef flare · the tide pushes them back', '#FFC9DE');
+  triggerCallout('reef:flare', 'Reef flare', 'Once per zone, when you drop to 2 shells, the reef pushes every creature back up the lanes. Use the breather.', state.W/2, state.reefY - 30);
 }
 
 /* ============================ PEARLS ============================ */
@@ -1514,7 +1526,7 @@ function claimGate(g){
     spawnBurst(state.player.x, state.reefY - 10, '143,247,210', 24, 140);
   }
   if (g.kind === 'pearl'){
-    addPearl(g.pearl, Math.min(3, stage + boon('diver')));
+    addPearl(g.pearl, Math.min(3, stage + boon('diver'))); // the gate label shows this level
   } else if (g.kind === 'rot'){
     addGlow(CONFIG.ROT_GLOW);
     for (let k=0;k<g.pack.length;k++){
@@ -2224,7 +2236,7 @@ function drawGates(){
     drawGlyph(pearl ? g.pearl : (rot ? 'rot' : 'sun'), x + 18, g.y, 10, col);
     const wasted = pearlWasted(g);
     if (wasted) ctx.globalAlpha = 0.45;
-    const label = pearl ? PEARLS[g.pearl].name.toUpperCase() + (wasted ? ' · FULL' : '') : (rot ? 'ROT +' + CONFIG.ROT_GLOW : 'GLOW +' + (1 + 0.5*(stage-1)));
+    const label = pearl ? PEARLS[g.pearl].name.toUpperCase() + ' ' + ['','I','II','III'][Math.min(3, stage + boon('diver'))] + (wasted ? ' · FULL' : '') : (rot ? 'ROT +' + CONFIG.ROT_GLOW : 'GLOW +' + (1 + 0.5*(stage-1)));
     ctx.fillStyle = pearl ? '#FFF4FA' : (rot ? '#E4F7C2' : '#FFF2CF');
     ctx.font = "600 11px Sora, system-ui, sans-serif";
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';

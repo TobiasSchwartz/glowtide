@@ -90,7 +90,11 @@ Rare. At 2 shells or fewer Mend the reef (refill all shells) comes as a 4th card
 a real reward's place. Sunken cache (fill every empty pearl slot with a level II pearl, III with
 Pearl diver) is a normal Uncommon reward. v3.5's comeback cards (Last stand, Second wind) took one
 of the three slots; the bot showed that a weak rescue card just costs a real reward, so they were
-removed. Bosses: odd zones Maelstrom (3-lane vortex wall, one
+removed.
+**Reef flare (v3.7).** Once per zone, the leak that leaves 2 shells or fewer pushes every non-boss
+creature back up the lanes (`FLARE_PUSH` 0.45). Feedback was "either a clean zone or dead, nothing
+in between": the rescue drops only come between zones, so a bad zone needs a breather to be survived
+at all. Pearl gates' labels show the level of the pearl they give (ripeness plus Pearl diver). Bosses: odd zones Maelstrom (3-lane vortex wall, one
 segment per lane, spawns krill), even zones Anglerking (one big fish that hops lanes after a
 telegraph, spawns darters). Beating a boss: next zone, +1 shell, palette deepens. Score = kills +
 gates + boss bonus; depth in metres. Target run length 3-5 min.
@@ -169,7 +173,7 @@ formulas (`GT.fn`): U = incoming creature HP/s over your damage/s (share of time
 creatures; the rest is free for gates) and B = one full wave's HP over the damage you deal while it
 crosses the lane (above 1 it leaks even with perfect play). Assumes +20% damage per boss reward.
 Bot calibration: the bot dies where U at tier II reaches about 2.5-3. Pressure grows slowly
-(fewer, bigger waves every 4.5-6 s; HP `1 + 0.2(z-1) + 0.02(z-1)^2`); the quadratic term outgrows
+(fewer, bigger waves every 4.5-6 s; HP `1 + 0.2(z-1) + 0.01(z-1)^2`); the quadratic term outgrows
 boss rewards so every run ends. v3 grew HP x count / interval about cubically, which gave a wall at
 zone 5.
 
@@ -182,6 +186,9 @@ wave retune. The bot picks its first card blindly; a human choosing well does be
 v3.5: the bot now takes the rarest card (comeback cards only over Commons, Mend when at 2 shells),
 since the first card is now usually a comeback card. Averages 6.0-7.6, medians 6-7.
 v3.6 (rescue as luck, floor and a 4th Mend card): averages 6.7-7.1, medians 6-7.
+v3.7: feedback "dying in zone 7 no matter what; longer runs are fine if rewards matter".
+`HP_SCALE_SQ` 0.02 -> 0.01 so the quadratic wall comes later and a good build goes visibly
+further: averages 7.1-8.4, 9-11 min, best runs zone 10-21.
 
 ## History
 
@@ -209,6 +216,8 @@ v3.6 (rescue as luck, floor and a 4th Mend card): averages 6.7-7.1, medians 6-7.
   from the first leak (two when in trouble), Sunken cache, Last stand +75% at 3 shells or fewer.
 - v3.6: feedback "rescue cards take space from real rewards". Comeback cards removed; rescue is
   luck per missing shell, a tier floor and Mend as a 4th card.
+- v3.7: feedback "too hard, no comebacks, Pearl diver looks broken". Reef flare, flatter HP curve,
+  pearl gate labels show the pearl level.
 
 ## Ideas not done yet
 
