@@ -209,6 +209,11 @@ v3.6 (rescue as luck, floor and a 4th Mend card): averages 6.7-7.1, medians 6-7.
 v3.7: feedback "dying in zone 7 no matter what; longer runs are fine if rewards matter".
 `HP_SCALE_SQ` 0.02 -> 0.01 so the quadratic wall comes later and a good build goes visibly
 further: averages 7.1-8.4, 9-11 min, best runs zone 10-21.
+v3.9 (no Glow loss on leaks, catch-up charging, drain pause by ripeness, pearl levels, reward
+stacking; bot, 10 runs each): before 7.2-8.8, after with `HP_SCALE` 0.2 -> 0.23 and Frost +25%:
+Lantern 8.8 (17 runs), Needle 8.0, Spore 7.0, Tidecaller 8.4; Glow IV share on Lantern 10% -> 24%.
+The bot claims gates at once, so it never ripens one and never hatches: hatchling strength is
+untested by the sim and needs real play.
 
 ## History
 
@@ -238,6 +243,13 @@ further: averages 7.1-8.4, 9-11 min, best runs zone 10-21.
   luck per missing shell, a tier floor and Mend as a 4th card.
 - v3.8: result screen: score hero, tiles (zone, time played, bosses, kills, gates, pearls used),
   one chip per zone coloured by leaks, the run's build, cause of death in the subtitle.
+- v3.9: feedback "once Glow fades there is no chance, gate and pearl levels make no difference,
+  hatchling unclear and weak, menu background shakes". Leaks cost no Glow, catch-up gate charging,
+  drain pause by ripeness and overflow, tier names and fade warning on the meter; pearl levels
+  change behaviour (Frost freeze, Undertow stun, Polyp twin/pierce, Storm double arc) with a numeral
+  in the tray and an effect flash; one autonomous levelling hatchling from any ripe gate, DEEP line
+  removed; Side vents and Full Bloom add up, cards say how rewards stack with Glow, Glowheart and
+  Ember fury; shake froze on menus (it decayed only during play), menus at 30 fps; haptic on leaks.
 - v3.7: feedback "too hard, no comebacks, Pearl diver looks broken". Reef flare, flatter HP curve,
   pearl gate labels show the pearl level.
 

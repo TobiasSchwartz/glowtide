@@ -29,7 +29,8 @@ cloned. Charge the gate or defend the lane: that choice is the whole game.
 
 - **Breeding gates.** Gates ripen over time and pay more, but only if you keep their lane clear.
 - **Glow.** Temporary power (faster shots, twin shot, piercing, Full Bloom) that drains unless you keep claiming gates.
-- **Pearls.** Six stored abilities (Frost, Storm, Ink, ...) you trigger with a tap.
+- **Pearls.** Six stored abilities (Frost, Storm, Ink, ...) you trigger with a tap. Each levels up to III and gains a new effect.
+- **Hatchling.** Claim a fully ripe gate and a companion hatches that guards the busiest other lane, growing with every ripe claim.
 - **Bosses.** Maelstrom and Anglerking, plus run-only rewards after every boss.
 - **Four vents.** Sidegrades that change the rules, unlocked by achievements. Nothing is pay to win.
 - **Daily dive.** The same seed and two modifiers for everyone, with medals.
