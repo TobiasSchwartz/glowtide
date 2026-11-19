@@ -314,7 +314,7 @@ const CONFIG = {
   FROST_THAW: 2, // after the freeze, creatures thaw at half speed this long
   FROST_THAW_SLOW: 0.5,
   FROST_BOSS_SLOW: 0.25,
-  FROST_DMG: 1.5, // frozen creatures take this much more damage
+  FROST_DMG: 1.25, // frozen creatures take this much more damage
   STORM_DMG: 2,
   PET_RATE: [0.4,0.6,0.8], // hatchling shots/s as a share of your vent's base bullets/s, by level
   PET_LIFE: 30,
@@ -335,7 +335,7 @@ const CONFIG = {
   KRILL_CLUSTER: 4,
   KRILL_CLUSTER_GAP: 6,
   ZONE_DURATION: 60,
-  HP_SCALE: 0.2,
+  HP_SCALE: 0.23, // v3.9: 0.2 -> 0.23 to offset no Glow loss on leaks, catch-up charging and stronger pearls
   HP_SCALE_SQ: 0.01,
   LEAK_BURST_RANGE: 0.22,
   LEAK_BURST_DMG: 6,
@@ -380,7 +380,7 @@ const GLOW_TIERS = [
 
 const PEARLS = {
   polyp:    { name:'Polyp',    col:'#8FF7D2', lv:[15,20,25],       sub:['15 s sentry','20 s · twin shot','25 s · twin · pierce'], desc:'Plants a sentry in your lane for 15 s. II: 20 s, twin shot. III: 25 s, twin shot and piercing, fires faster.' },
-  frost:    { name:'Frost',    col:'#A9ECFF', lv:[2.5,3.5,5],      sub:['2.5 s freeze','3.5 s freeze','5 s freeze'], desc:'Freezes every creature solid for 2.5 s (II: 3.5 s, III: 5 s), then they thaw slowly. Frozen creatures take +50% damage. Bosses are only slowed.' },
+  frost:    { name:'Frost',    col:'#A9ECFF', lv:[2.5,3.5,5],      sub:['2.5 s freeze','3.5 s freeze','5 s freeze'], desc:'Freezes every creature solid for 2.5 s (II: 3.5 s, III: 5 s), then they thaw slowly. Frozen creatures take +25% damage. Bosses are only slowed.' },
   undertow: { name:'Undertow', col:'#FF9E7A', lv:[0.25,0.4,0.6],   stun:[0,0.75,1.5], sub:['push back','push · stun','big push · stun'], desc:'Pushes every creature back up the lane. II: further, with a short stun. III: almost clears the lanes, longer stun.' },
   storm:    { name:'Storm',    col:'#7FE9FF', lv:[8,11,14],        sub:['8 s','11 s · harder','14 s · double arcs'], desc:'For 8 s, every kill arcs into a nearby lane (II: 11 s, harder hits. III: 14 s, arcs into both other lanes).' },
   ink:      { name:'Ink',      col:'#9A6BFF', lv:[10,15,20],       sub:['your lane','x1.5 damage','x2 damage'], desc:'Inks every enemy in your lane for heavy damage (x1.5 at II, x2 at III).' },

@@ -67,7 +67,7 @@ lane, 15 s), Frost (slow all, 8 s), Undertow (push all back), Storm (kills arc t
 a pearl gate's ripeness sets the level, and a pearl you already hold levels up instead of taking a
 slot. Higher levels last longer or hit harder (`PEARLS[k].lv`), and since v3.9 most change what the
 pearl does: Frost freezes solid 2.5/3.5/5 s, then 2 s thaw at half speed, and frozen creatures take
-+50% damage (`FROST_DMG`; bosses are only slowed); Undertow pushes 0.25/0.4/0.6 of the lane with a
++25% damage (`FROST_DMG`; bosses are only slowed); Undertow pushes 0.25/0.4/0.6 of the lane with a
 0/0.75/1.5 s stun (ripples per lane as far as the push); Polyp II twin shot, III twin, piercing and
 x1.4 rate (one sentry, so placing it stays a choice; drawn bigger with pips); Storm III arcs into
 both other lanes. Ink and Mend unchanged. Using a pearl flashes its name, level and effect
