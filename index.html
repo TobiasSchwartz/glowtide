@@ -3253,6 +3253,9 @@ function frame(now){
   if (!isFinite(dt) || dt < 0) dt = 0;
   if (dt > 0.05) dt = 0.05;
   const frozen = state.screen === 'playing' && !!state.callout;
+  // Toasts are DOM above the canvas: hide them while a tip card is up so they never cover its text.
+  const hideToasts = frozen ? 'hidden' : '';
+  if (toastEl.style.visibility !== hideToasts) toastEl.style.visibility = hideToasts;
   if (state.nameFlash && !frozen){ state.nameFlash.t -= dt; if (state.nameFlash.t <= 0) state.nameFlash = null; }
   if (state.screen === 'playing'){
     // A callout hard-pauses the run; no time passes until it is dismissed.
