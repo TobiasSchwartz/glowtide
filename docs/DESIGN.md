@@ -30,19 +30,28 @@ the player can plan gate vs. defend. Darters and the Anglerking only step to a n
 - **Rotten gates** (15% from zone 2): dashed green, skull glyph, with the caged pack drawn inside.
   Claiming gives +2 Glow but releases the pack (a Splitter plus drifters) at the gate. Ignoring one is
   safe: rotten gates never clone.
-- **Deep claim and hatchlings:** claiming a fully ripe gate below the dashed DEEP line (bottom 30%
-  of the lane) gives +500 and hatches a hatchling (max 2) that shoots beside you for 30 s
-  (`PET_LIFE`, blinks before it leaves); at the cap a deep claim renews the older one, so deep
-  claims stay worth chasing. Each leak scares one away. Eligible gates pulse green.
+- **Hatchling (v3.9):** claiming any fully ripe gate (3 dots; the third dot turns into a green egg
+  and the rim goes mint) hatches one hatchling for 30 s (`PET_LIFE`). Another ripe claim while it
+  lives levels it up (I-III) and renews it. It guards the lane with the frontmost creature other
+  than yours on its own, and only charges gates when it is in your lane. Shots/s are a share of
+  your vent's base bullets/s (`PET_RATE` 0.4/0.6/0.8, so Lantern 4/6/8); II adds twin shot, III
+  piercing; damage follows yours. A leak costs it 8 s (`PET_LEAK_COST`); a ring around it shows its
+  time, pips its level. v3.2-3.8 needed the gate below a DEEP line, gave up to two that fired only
+  into your lane and fled on a leak: rare, weak, and gone exactly when needed.
 - **Safe spawns:** a new gate avoids lanes with creatures near the top or queued, retrying up to
   four times (0.8 s apart) before it spawns in the calmest lane.
 - **Reef burst:** a leaking creature costs shells as before, but bursts and damages the creatures
   just behind it in its lane, so a horde does not leak all at once.
 
 **Glow (temporary power, replaces permanent upgrades).** Glow gates add +1 Glow (0-4). Drain grows
-with Glow (`GLOW_DRAIN_BASE + GLOW_DRAIN_PER*glow`), so tier IV needs upkeep and tier I is stable; a
-claim pauses the drain for 2 s. A leak costs only 0.35 Glow (v2 took a whole tier, which caused a
-death spiral). A Shade that gets through drains 1 more (it used to drain when near the reef, i.e.
+with Glow (`GLOW_DRAIN_BASE + GLOW_DRAIN_PER*glow`), so tier IV needs upkeep and tier I is stable. A
+Glow gate claim pauses the drain by ripeness, 2/4/6 s (`GLOW_PAUSE`); Glow above the cap still scores
+and adds 3 s per point, all capped at 8 s (`GLOW_PAUSE_MAX`), about half the gap between Glow gates,
+so you still need nearly every one (a light sweeps over the meter while paused). Leaks cost no Glow
+since v3.9 (`LEAK_GLOW` 0; v2 took a tier, v3 0.35: shells plus Glow made every leak a spiral).
+Catch-up: gates charge x1.6 below Glow II and x1.3 at II when the vent can reach III (`CATCHUP_CHARGE`).
+The meter names its tiers (RAPID TWIN PIERCE BLOOM, faint until reached) and the top tier blinks in
+its last 0.2 before it fades. A Shade that gets through drains 1 more (it used to drain when near the reef, i.e.
 exactly while you fought it, which made it a run killer). Glow claimed above the cap becomes score.
 Tiers: I faster shots (x1.25), II twin shot (extra bullet every 2nd volley, `GLOW_TWIN_EVERY`), III
 piercing, IV Full Bloom (side-lane shots). Tiers are kept flat on purpose (tier 0 to III is about
@@ -54,9 +63,15 @@ and were opaque (unexplained icons). Glow keeps power tied to how well you play 
 **Pearls (stored, player-triggered items).** ~30% of gates are pearl gates showing the specific
 pearl. Pearls go into a 3-slot tray (bottom right) and are used by tapping: Polyp (sentry in your
 lane, 15 s), Frost (slow all, 8 s), Undertow (push all back), Storm (kills arc to other lanes,
-8 s, damage scales with zone), Ink (damage everything in your lane), Mend (+2 shells). Pearls have levels I-III (tray dots):
+8 s, damage scales with zone), Ink (damage everything in your lane), Mend (+2 shells). Pearls have levels I-III (a numeral on the tray slot):
 a pearl gate's ripeness sets the level, and a pearl you already hold levels up instead of taking a
-slot. Higher levels last longer or hit harder (`PEARLS[k].lv`). A full tray wastes new pearls, and
+slot. Higher levels last longer or hit harder (`PEARLS[k].lv`), and since v3.9 most change what the
+pearl does: Frost freezes solid 2.5/3.5/5 s, then 2 s thaw at half speed, and frozen creatures take
++25% damage (`FROST_DMG`; bosses are only slowed); Undertow pushes 0.25/0.4/0.6 of the lane with a
+0/0.75/1.5 s stun (ripples per lane as far as the push); Polyp II twin shot, III twin, piercing and
+x1.4 rate (one sentry, so placing it stays a choice; drawn bigger with pips); Storm III arcs into
+both other lanes. Ink and Mend unchanged. Using a pearl flashes its name, level and effect
+("FROST III / 5 s freeze", `PEARLS[k].sub`). A full tray wastes new pearls, and
 such gates are drawn dimmed with "FULL", so pearls are worth spending. A pearl's tip card shows when
 it is collected, so it can be planned.
 
@@ -71,7 +86,12 @@ run-only rewards (`BOONS`). Each levels up to a max when picked again and its ca
 reward's tier belongs to its next level (`t` per level), so stronger levels are rarer: Keen shots
 and Quick vent go Common -> Uncommon -> Rare, Side vents Uncommon -> Rare -> Epic, Needlepoint Rare
 -> Epic. Utility rewards (Steady glow, Open gates, Coral reef) stay mostly Common, Old souls is
-Uncommon/Rare, Brighter vent Epic. Pearl rewards: Oyster bed (10/15/20% more gates, all extras pearl
+Uncommon/Rare, Brighter vent Epic.
+Glow and rewards (v3.9): Quick vent, Needlepoint and Side vents overlap Glow I, III and IV and say on
+the card how they stack. Side vents and Full Bloom now add their side-shot rates (an accumulator,
+`state.sideAcc`; before, a volley fired side shots if either triggered, so overlaps were lost).
+Glowheart (+8% damage per Glow tier per level, Rare -> Epic) is the high-Glow build, Ember fury
+(+40/+70% damage at Glow I or lower, Rare -> Epic) the comeback build. Pearl rewards: Oyster bed (10/15/20% more gates, all extras pearl
 gates, so Glow gates stay as common; Common -> Rare), Deep pockets (4th tray slot, Rare; the tray
 slots shrink to keep the shells' room on narrow phones), Pearl diver (pearls arrive one level
 higher, Epic). Spring tide is the only Legendary: up to 3 rewards you hold gain a level, lowest
@@ -132,8 +152,8 @@ starts on first tap, mute toggle persisted.
 
 - All tuning numbers live in `const CONFIG` and the `VENT_DEFS` / `ENEMY_TYPES` tables at the top
   of the script. Zone 1 easing: `ZONE1_WAVE_MUL`, `ZONE1_DRAIN_MUL`. Rule tables: `BOONS`, `DAILY_MODS`, vent rules are checked via `state.vent`.
-- Battery: drawing is capped at 60 fps in play (120 Hz phones would draw twice as often) and 20 fps
-  on menus and tip cards, timed with `performance.now()` (rAF timestamps stall in headless Chrome);
+- Battery: drawing is capped at 60 fps in play (120 Hz phones would draw twice as often) and 30 fps
+  on menus and tip cards (20 fps made the drifting particles step), timed with `performance.now()` (rAF timestamps stall in headless Chrome);
   `DPR_CAP` 1.5; the AudioContext is suspended outside play and while muted.
 - Popups: identical toasts merge, at most two show, Glow tier toasts at most every 4 s. Side shots
   (Full Bloom, Side vents) and sentries pass through gates; only your lane volley and hatchlings
@@ -189,6 +209,11 @@ v3.6 (rescue as luck, floor and a 4th Mend card): averages 6.7-7.1, medians 6-7.
 v3.7: feedback "dying in zone 7 no matter what; longer runs are fine if rewards matter".
 `HP_SCALE_SQ` 0.02 -> 0.01 so the quadratic wall comes later and a good build goes visibly
 further: averages 7.1-8.4, 9-11 min, best runs zone 10-21.
+v3.9 (no Glow loss on leaks, catch-up charging, drain pause by ripeness, pearl levels, reward
+stacking; bot, 10 runs each): before 7.2-8.8, after with `HP_SCALE` 0.2 -> 0.23 and Frost +25%:
+Lantern 8.8 (17 runs), Needle 8.0, Spore 7.0, Tidecaller 8.4; Glow IV share on Lantern 10% -> 24%.
+The bot claims gates at once, so it never ripens one and never hatches: hatchling strength is
+untested by the sim and needs real play.
 
 ## History
 
@@ -218,6 +243,13 @@ further: averages 7.1-8.4, 9-11 min, best runs zone 10-21.
   luck per missing shell, a tier floor and Mend as a 4th card.
 - v3.8: result screen: score hero, tiles (zone, time played, bosses, kills, gates, pearls used),
   one chip per zone coloured by leaks, the run's build, cause of death in the subtitle.
+- v3.9: feedback "once Glow fades there is no chance, gate and pearl levels make no difference,
+  hatchling unclear and weak, menu background shakes". Leaks cost no Glow, catch-up gate charging,
+  drain pause by ripeness and overflow, tier names and fade warning on the meter; pearl levels
+  change behaviour (Frost freeze, Undertow stun, Polyp twin/pierce, Storm double arc) with a numeral
+  in the tray and an effect flash; one autonomous levelling hatchling from any ripe gate, DEEP line
+  removed; Side vents and Full Bloom add up, cards say how rewards stack with Glow, Glowheart and
+  Ember fury; shake froze on menus (it decayed only during play), menus at 30 fps; haptic on leaks.
 - v3.7: feedback "too hard, no comebacks, Pearl diver looks broken". Reef flare, flatter HP curve,
   pearl gate labels show the pearl level.
 
@@ -227,6 +259,5 @@ further: averages 7.1-8.4, 9-11 min, best runs zone 10-21.
 - More pearls/enemies, a third boss (bosses still alternate odd/even), new content from zone 5 on.
 - Wild ideas from the brainstorm: leaked shells hatch into pets, a nemesis that returns the enemy
   types you leaked most, taming gates that turn heavy enemies into allies, an upside-down zone.
-- Haptics (`navigator.vibrate`) on leaks.
 - Bosses are now the main killer in sims (boss HP still scales with `hpMul`; reaching the reef
   ends the run regardless of shells).
