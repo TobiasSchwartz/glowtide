@@ -260,6 +260,8 @@ untested by the sim and needs real play.
   in the tray and an effect flash; one autonomous levelling hatchling from any ripe gate, DEEP line
   removed; Side vents and Full Bloom add up, cards say how rewards stack with Glow, Glowheart and
   Ember fury; shake froze on menus (it decayed only during play), menus at 30 fps; haptic on leaks.
+- v3.10.1: feedback "big glows look like two circles". The glow sprite's 3-stop ramp had a kink at
+  35% of the radius; it is now a smooth tight core plus a wide haze, eased to zero at the edge.
 - v3.10: feedback "laggy late in a run, slow motion and smeared visuals with 50+ creatures".
   Performance only: half-res glow layer in crowds, glows under bodies, sprite-cached bodies, pooled
   particles, batched bullets, catch-up steps instead of slow motion, still screens stop redrawing.
