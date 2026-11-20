@@ -344,6 +344,8 @@ const CONFIG = {
   MAELSTROM_SPEED: 0.03,
   ANGLER_SPEED: 0.025,
   DPR_CAP: 1.5,
+  GLOW_LAYER_MIN: 12,     // creatures on screen before their glows go to the half-res layer
+  GLOW_LAYER_SCALE: 0.5,  // glow layer resolution in CSS px (glows are soft, so half is invisible)
   MASTER_GAIN: 0.5,
   TOAST_ABOVE_REEF: 150,
   LANE_TINT_ALPHA: 0.04,
@@ -488,7 +490,7 @@ function mixArr(a,b,t){ return a.map((v,i)=>Math.round(v+(b[i]-v)*t)); }
 
 /* ============================ DOM ============================ */
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+let ctx = canvas.getContext('2d'); // let: bodySprite() and drawEnemyGlows() briefly point it at offscreen canvases
 const $ = function(id){ return document.getElementById(id); };
 const hudBoonsEl = $('hudBoons'), pauseBoonsEl = $('pauseBoons');
 const hudEl = $('hud'), hScoreEl = $('hScore'), hDepthEl = $('hDepth');
@@ -630,6 +632,19 @@ function glowSprite(rgb, radius){
   grd.addColorStop(1, 'rgba('+rgb+',0)');
   g.fillStyle = grd; g.fillRect(0,0,S,S);
   spriteCache[key] = c;
+  return c;
+}
+// A solid anti-aliased disc, drawn large so it stays crisp when scaled down to a particle.
+const dotCache = {};
+function dotSprite(rgb){
+  let c = dotCache[rgb];
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgb('+rgb+')';
+  g.beginPath(); g.arc(16,16,16,0,6.2832); g.fill();
+  dotCache[rgb] = c;
   return c;
 }
 function drawGlow(rgb, x, y, radius, alpha){
@@ -2104,26 +2119,92 @@ function drawPlayer(){
   ctx.beginPath(); ctx.arc(3,-8,2,0,6.2832); ctx.fill();
   ctx.restore();
 }
-function drawEnemies(){
+// Creatures whose body never animates are drawn once into a cached sprite (per radius, icy and dpr);
+// late zones put 50+ on screen, and per-creature vector paths were the main cost of a frame.
+const STATIC_BODIES = { krill: drawKrill, darter: drawDarter, bulwark: drawBulwark, splitter: drawSplitter };
+const bodyCache = {};
+function bodySprite(e, icy){
+  const key = e.type + '_' + e.r + '_' + (icy ? 1 : 0) + '_' + state.dpr;
+  let c = bodyCache[key];
+  if (c) return c;
+  const ext = Math.ceil(e.r*2 + 4); // krill antennae reach 1.9r
+  c = document.createElement('canvas');
+  c.width = c.height = Math.ceil(ext*2*state.dpr);
+  c.ext = ext;
+  const g = c.getContext('2d');
+  g.scale(state.dpr, state.dpr);
+  g.translate(ext, ext);
+  const main = ctx;
+  ctx = g;
+  try { STATIC_BODIES[e.type](e, icy); } finally { ctx = main; }
+  bodyCache[key] = c;
+  return c;
+}
+// Creature glows are big soft additive gradients; in a crowd they cover the lanes several times over and
+// blending those pixels was half of a late-zone frame. Past GLOW_LAYER_MIN creatures they are drawn into
+// a half-resolution layer that is blended onto the screen once. The glows are blurry, so it looks the same.
+let glowLayer = null, glowCtx = null;
+function drawEnemyGlows(){
+  let n = 0, minY = Infinity, maxY = -Infinity;
   for (let i=0;i<state.enemies.length;i++){
     const e = state.enemies[i];
     if (e.dead) continue;
+    n++;
+    const ext = glowSprite(e.glow, e.r*1.9).width/2;
+    if (e.y - ext < minY) minY = e.y - ext;
+    if (e.y + ext > maxY) maxY = e.y + ext;
+  }
+  if (!n) return;
+  const direct = n < CONFIG.GLOW_LAYER_MIN;
+  const S = CONFIG.GLOW_LAYER_SCALE;
+  const main = ctx;
+  let y0 = 0, y1 = 0;
+  if (direct){
     ctx.save();
+  } else {
+    const lw = Math.ceil(state.W*S), lh = Math.ceil(state.H*S);
+    if (!glowLayer){ glowLayer = document.createElement('canvas'); glowCtx = glowLayer.getContext('2d'); }
+    if (glowLayer.width !== lw || glowLayer.height !== lh){ glowLayer.width = lw; glowLayer.height = lh; }
+    // Only the band the glows touch is cleared and blended.
+    y0 = clamp(Math.floor(minY*S), 0, lh); y1 = clamp(Math.ceil(maxY*S), 0, lh);
+    if (y1 <= y0) return;
+    glowCtx.setTransform(1,0,0,1,0,0);
+    glowCtx.clearRect(0, y0, lw, y1 - y0);
+    glowCtx.setTransform(S,0,0,S,0,0);
+    ctx = glowCtx;
+  }
+  try {
     ctx.globalCompositeOperation = 'lighter';
-    drawGlow(e.glow, e.x, e.y, e.r*1.9, e.boss?0.95:0.8);
-    ctx.restore();
-    ctx.save();
-    ctx.translate(e.x, e.y);
+    for (let i=0;i<state.enemies.length;i++){
+      const e = state.enemies[i];
+      if (!e.dead) drawGlow(e.glow, e.x, e.y, e.r*1.9, e.boss?0.95:0.8);
+    }
+  } finally { ctx = main; }
+  if (direct){ ctx.restore(); return; }
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.drawImage(glowLayer, 0, y0, glowLayer.width, y1 - y0, 0, y0/S, glowLayer.width/S, (y1 - y0)/S);
+  ctx.restore();
+}
+function drawEnemies(){
+  drawEnemyGlows();
+  // Pass 2: bodies and health bars.
+  for (let i=0;i<state.enemies.length;i++){
+    const e = state.enemies[i];
+    if (e.dead) continue;
     const icy = e.slowUntil > state.time || (!e.boss && state.thawUntil > state.time);
-    if (e.type === 'drifter') drawDrifter(e, icy);
-    else if (e.type === 'krill') drawKrill(e, icy);
-    else if (e.type === 'darter') drawDarter(e, icy);
-    else if (e.type === 'bulwark') drawBulwark(e, icy);
-    else if (e.type === 'splitter') drawSplitter(e, icy);
-    else if (e.type === 'shade') drawShade(e, icy);
-    else if (e.type === 'maelstrom') drawMaelstrom(e);
-    else if (e.type === 'anglerking') drawAngler(e);
-    ctx.restore();
+    if (STATIC_BODIES[e.type]){
+      const s = bodySprite(e, icy);
+      ctx.drawImage(s, e.x - s.ext, e.y - s.ext, s.ext*2, s.ext*2);
+    } else {
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      if (e.type === 'drifter') drawDrifter(e, icy);
+      else if (e.type === 'shade') drawShade(e, icy);
+      else if (e.type === 'maelstrom') drawMaelstrom(e);
+      else if (e.type === 'anglerking') drawAngler(e);
+      ctx.restore();
+    }
     if (e.maxHp > 6 && !e.boss){
       const w = e.r*2, hf = clamp(e.hp/e.maxHp,0,1);
       ctx.fillStyle = 'rgba(4,18,31,0.7)';
@@ -2401,22 +2482,32 @@ function drawSentries(){
   }
 }
 function drawBullets(){
+  if (!state.bullets.length) return;
+  // Every bullet shares one style, so glows, trails and bodies each go out as a single batch.
   ctx.save();
   ctx.globalCompositeOperation='lighter';
   ctx.lineCap = 'round';
   for (let i=0;i<state.bullets.length;i++){
     const b = state.bullets[i];
     drawGlow('184,255,242', b.x, b.y, CONFIG.BULLET_GLOW_R, CONFIG.BULLET_GLOW_ALPHA);
-    ctx.strokeStyle = 'rgba(184,255,242,'+CONFIG.BULLET_TRAIL_ALPHA+')';
-    ctx.lineWidth = CONFIG.BULLET_TRAIL_W;
-    ctx.beginPath(); ctx.moveTo(b.x, b.y+CONFIG.BULLET_TRAIL_LEN); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
-  ctx.restore();
-  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = 'rgba(184,255,242,'+CONFIG.BULLET_TRAIL_ALPHA+')';
+  ctx.lineWidth = CONFIG.BULLET_TRAIL_W;
+  ctx.beginPath();
   for (let i=0;i<state.bullets.length;i++){
     const b = state.bullets[i];
-    ctx.beginPath(); ctx.ellipse(b.x, b.y, CONFIG.BULLET_BODY_RX, CONFIG.BULLET_BODY_RY, 0, 0, 6.2832); ctx.fill();
+    ctx.moveTo(b.x, b.y+CONFIG.BULLET_TRAIL_LEN); ctx.lineTo(b.x, b.y);
   }
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  for (let i=0;i<state.bullets.length;i++){
+    const b = state.bullets[i];
+    ctx.moveTo(b.x + CONFIG.BULLET_BODY_RX, b.y);
+    ctx.ellipse(b.x, b.y, CONFIG.BULLET_BODY_RX, CONFIG.BULLET_BODY_RY, 0, 0, 6.2832);
+  }
+  ctx.fill();
 }
 function drawArcs(){
   if (!state.arcs.length) return;
@@ -2445,12 +2536,14 @@ function drawParticles(){
   if (!state.particles.length) return;
   ctx.save();
   ctx.globalCompositeOperation='lighter';
+  // Each particle stamps a cached solid dot (one per colour) instead of building a path and colour string.
   for (let i=0;i<state.particles.length;i++){
     const p = state.particles[i];
     const a = clamp(p.life/p.max,0,1);
+    const r = p.size*a;
+    if (r < 0.05) continue;
     ctx.globalAlpha = a;
-    ctx.fillStyle = 'rgba('+p.rgb+',1)';
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*a,0,6.2832); ctx.fill();
+    ctx.drawImage(dotSprite(p.rgb), p.x - r, p.y - r, r*2, r*2);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -3251,7 +3344,9 @@ function frame(now){
   let dt = (now - last)/1000;
   last = now;
   if (!isFinite(dt) || dt < 0) dt = 0;
-  if (dt > 0.05) dt = 0.05;
+  // Slow frames catch up in steps of at most 1/30 s instead of running the game in slow motion.
+  // Longer stalls (a backgrounded tab, a debugger) are still dropped rather than simulated.
+  if (dt > 0.25) dt = 1/30;
   const frozen = state.screen === 'playing' && !!state.callout;
   // Toasts are DOM above the canvas: hide them while a tip card is up so they never cover its text.
   const hideToasts = frozen ? 'hidden' : '';
@@ -3259,7 +3354,14 @@ function frame(now){
   if (state.nameFlash && !frozen){ state.nameFlash.t -= dt; if (state.nameFlash.t <= 0) state.nameFlash = null; }
   if (state.screen === 'playing'){
     // A callout hard-pauses the run; no time passes until it is dismissed.
-    if (!state.callout) update(dt);
+    if (!state.callout){
+      let left = dt;
+      while (left > 1e-6 && state.screen === 'playing' && !state.callout){
+        const step = Math.min(left, 1/30);
+        update(step);
+        left -= step;
+      }
+    }
   } else {
     state.shake = 0; // menus over a frozen run must not keep shaking (v3.8 froze the shake on death)
     state.time += dt;
