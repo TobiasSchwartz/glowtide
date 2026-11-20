@@ -153,8 +153,18 @@ starts on first tap, mute toggle persisted.
 - All tuning numbers live in `const CONFIG` and the `VENT_DEFS` / `ENEMY_TYPES` tables at the top
   of the script. Zone 1 easing: `ZONE1_WAVE_MUL`, `ZONE1_DRAIN_MUL`. Rule tables: `BOONS`, `DAILY_MODS`, vent rules are checked via `state.vent`.
 - Battery: drawing is capped at 60 fps in play (120 Hz phones would draw twice as often) and 30 fps
-  on menus and tip cards (20 fps made the drifting particles step), timed with `performance.now()` (rAF timestamps stall in headless Chrome);
-  `DPR_CAP` 1.5; the AudioContext is suspended outside play and while muted.
+  on menus (20 fps made the drifting particles step), timed with `performance.now()` (rAF timestamps stall in headless Chrome);
+  pause, result, reward and tip-card screens redraw the canvas only while something on it still
+  moves (the death burst, a card's fade-in), then not at all; `DPR_CAP` 1.5; the AudioContext is
+  suspended outside play and while muted.
+- Rendering, not logic, is the cost: `update` stays under 0.1 ms with 65 creatures. Crowds were
+  fill-rate bound by the creature glows, so from `GLOW_LAYER_MIN` (18) creatures the glows are drawn
+  into a half-resolution layer blended once (crossover measured between 14 and 24). Glows draw in one
+  additive pass under all bodies; Krill, Darter, Bulwark and Splitter bodies are cached sprites;
+  particles are pooled and stamp a cached dot; bullets draw in batched paths. Slow frames catch the
+  simulation up in steps of at most 1/30 s instead of running in slow motion (stalls over 0.25 s are
+  dropped). A 60-creature test scene went from about 16 ms to about 12 ms per frame (headless Chromium).
+- The frame cap gives 90 Hz phones an even 45 fps; 60 there would mean uneven frame pacing.
 - Popups: identical toasts merge, at most two show, Glow tier toasts at most every 4 s. Side shots
   (Full Bloom, Side vents) and sentries pass through gates; only your lane volley and hatchlings
   charge them.
@@ -250,6 +260,9 @@ untested by the sim and needs real play.
   in the tray and an effect flash; one autonomous levelling hatchling from any ripe gate, DEEP line
   removed; Side vents and Full Bloom add up, cards say how rewards stack with Glow, Glowheart and
   Ember fury; shake froze on menus (it decayed only during play), menus at 30 fps; haptic on leaks.
+- v3.10: feedback "laggy late in a run, slow motion and smeared visuals with 50+ creatures".
+  Performance only: half-res glow layer in crowds, glows under bodies, sprite-cached bodies, pooled
+  particles, batched bullets, catch-up steps instead of slow motion, still screens stop redrawing.
 - v3.7: feedback "too hard, no comebacks, Pearl diver looks broken". Reef flare, flatter HP curve,
   pearl gate labels show the pearl level.
 

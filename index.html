@@ -617,10 +617,12 @@ function persist(){
 
 /* ============================ SPRITES ============================ */
 const spriteCache = {};
+// Cached per colour, then per radius, so the lookup builds no strings: it runs for every glow every frame.
 function glowSprite(rgb, radius){
   const r = Math.max(4, Math.round(radius));
-  const key = rgb + '_' + r;
-  let c = spriteCache[key];
+  let byR = spriteCache[rgb];
+  if (!byR) byR = spriteCache[rgb] = [];
+  let c = byR[r];
   if (c) return c;
   const S = r*4;
   c = document.createElement('canvas');
@@ -631,7 +633,7 @@ function glowSprite(rgb, radius){
   grd.addColorStop(0.35, 'rgba('+rgb+',0.32)');
   grd.addColorStop(1, 'rgba('+rgb+',0)');
   g.fillStyle = grd; g.fillRect(0,0,S,S);
-  spriteCache[key] = c;
+  byR[r] = c;
   return c;
 }
 // A solid anti-aliased disc, drawn large so it stays crisp when scaled down to a particle.
@@ -743,6 +745,7 @@ function resize(){
   buildBg();
   state.player.x = laneX(state.player.lane);
   initAmbience();
+  needsDraw = true; // resizing clears the canvas
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', function(){ setTimeout(resize, 120); });
@@ -1373,13 +1376,13 @@ function fireVolley(lane, damage, pierce, slow, y){
     const off = n===1 ? 0 : (i-(n-1)/2)*Math.max(s.spread, 9);
     state.bullets.push({
       id: state.nextId++, lane:lane, x: cx+off, y: y0, prevY: y0,
-      damage: damage, pierce: pierce, slow: slow||0, hits:{}
+      damage: damage, pierce: pierce, slow: slow||0, hits:null
     });
   }
 }
 function fireFrom(lane, damage, pierce, y, noGate){
   const cx = laneX(lane);
-  state.bullets.push({ id: state.nextId++, lane:lane, x:cx, y:y, prevY:y, damage:damage, pierce:pierce, slow:0, hits:{}, noGate:!!noGate });
+  state.bullets.push({ id: state.nextId++, lane:lane, x:cx, y:y, prevY:y, damage:damage, pierce:pierce, slow:0, hits:null, noGate:!!noGate });
 }
 function frozen(e){ return !e.boss && state.frostUntil > state.time; }
 function damageEnemy(e, dmg){
@@ -1394,14 +1397,16 @@ function hitEnemy(e, bullet){
   spawnBurst(e.x, e.y, e.glow, 3, 60);
   Audio_.hit();
 }
+// Particles are recycled through a pool: every hit and kill spawns a few, hundreds a second late in a run.
+const particlePool = [];
 function spawnBurst(x,y,rgb,n,sp){
   for (let i=0;i<n;i++){
     if (state.particles.length >= CONFIG.MAX_PARTICLES) return;
     const a = fx()*6.2832, s = sp*(0.4+fx());
-    state.particles.push({
-      x:x, y:y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
-      life:0.4+fx()*0.45, max:0.85, rgb:rgb, size:1.5+fx()*2.5
-    });
+    const p = particlePool.pop() || {};
+    p.x = x; p.y = y; p.vx = Math.cos(a)*s; p.vy = Math.sin(a)*s;
+    p.life = 0.4+fx()*0.45; p.max = 0.85; p.rgb = rgb; p.size = 1.5+fx()*2.5;
+    state.particles.push(p);
   }
 }
 function onDeath(e){
@@ -1816,19 +1821,20 @@ function updateBullets(dt){
     for (let j=0;j<state.enemies.length;j++){
       const e = state.enemies[j];
       if (e.dead || e.lane !== b.lane) continue;
-      if (b.hits[e.id]) continue;
+      if (b.hits && b.hits[e.id]) continue;
       const rad = e.r + CONFIG.BULLET_R;
       if (e.y + rad >= b.y && e.y - rad <= b.prevY){ if (e.y > bestY){ bestY = e.y; best = e; bestIsGate = false; } }
     }
     for (let j=0;j<state.gates.length;j++){
       const g = state.gates[j];
       if (b.noGate || g.lane !== b.lane) continue;
-      if (b.hits[g.id]) continue;
+      if (b.hits && b.hits[g.id]) continue;
       const rad = CONFIG.GATE_H*0.5 + CONFIG.BULLET_R;
       if (g.y + rad >= b.y && g.y - rad <= b.prevY){ if (g.y > bestY){ bestY = g.y; best = g; bestIsGate = true; } }
     }
     if (!best) continue;
-    b.hits[best.id] = true;
+    // Only a piercing bullet survives a hit, so only it needs to remember what it already hit.
+    if (b.pierce > 0) (b.hits || (b.hits = {}))[best.id] = true;
     if (bestIsGate){
       const g = best;
       g.charge += b.damage * state.stats.gateChargeMul;
@@ -1849,7 +1855,13 @@ function updateParticles(dt){
   for (let i=state.particles.length-1;i>=0;i--){
     const p = state.particles[i];
     p.life -= dt;
-    if (p.life <= 0){ state.particles.splice(i,1); continue; }
+    if (p.life <= 0){
+      // Swap-remove: particles blend additively, so their order does not matter.
+      const ps = state.particles;
+      ps[i] = ps[ps.length-1]; ps.pop();
+      particlePool.push(p);
+      continue;
+    }
     p.x += p.vx*dt; p.y += p.vy*dt;
     p.vx *= 0.94; p.vy *= 0.94;
     p.vy += 40*dt;
@@ -2124,9 +2136,13 @@ function drawPlayer(){
 const STATIC_BODIES = { krill: drawKrill, darter: drawDarter, bulwark: drawBulwark, splitter: drawSplitter };
 const bodyCache = {};
 function bodySprite(e, icy){
-  const key = e.type + '_' + e.r + '_' + (icy ? 1 : 0) + '_' + state.dpr;
+  // Each creature keeps its two sprites (normal, icy), so the shared lookup runs once per creature.
+  if (e.sprDpr !== state.dpr){ e.spr = [null, null]; e.sprDpr = state.dpr; }
+  const slot = icy ? 1 : 0;
+  if (e.spr[slot]) return e.spr[slot];
+  const key = e.type + '_' + e.r + '_' + slot + '_' + state.dpr;
   let c = bodyCache[key];
-  if (c) return c;
+  if (c) return (e.spr[slot] = c);
   const ext = Math.ceil(e.r*2 + 4); // krill antennae reach 1.9r
   c = document.createElement('canvas');
   c.width = c.height = Math.ceil(ext*2*state.dpr);
@@ -2138,7 +2154,7 @@ function bodySprite(e, icy){
   ctx = g;
   try { STATIC_BODIES[e.type](e, icy); } finally { ctx = main; }
   bodyCache[key] = c;
-  return c;
+  return (e.spr[slot] = c);
 }
 // Creature glows are big soft additive gradients; in a crowd they cover the lanes several times over and
 // blending those pixels was half of a late-zone frame. Past GLOW_LAYER_MIN creatures they are drawn into
@@ -3334,6 +3350,9 @@ function botTick(dt){
 /* ============================ LOOP ============================ */
 let last = performance.now();
 let lastDraw = -1e9;
+// Still screens (pause, result, rewards, tip cards) show a frozen run under an overlay, so the canvas is
+// only redrawn when something on it changes, not 30 times a second.
+let needsDraw = true, stillKey = '';
 function frame(now){
   requestAnimationFrame(frame);
   // Cap at 60 fps in play (120 Hz phones would otherwise draw twice as often) and 30 fps elsewhere.
@@ -3369,7 +3388,14 @@ function frame(now){
     updateParticles(dt);
     updateToasts(dt);
   }
-  render();
+  const still = frozen || state.screen === 'paused' || state.screen === 'gameover' || state.screen === 'boon';
+  const key = state.screen + (state.callout ? state.callout.born : '');
+  if (key !== stillKey){ stillKey = key; needsDraw = true; }
+  // A tip card is fully frozen apart from its 140 ms fade-in; the other still screens keep the death
+  // burst, ripples and banners running until they fade out.
+  const moving = frozen ? pnow - (state.callout.born || 0) < 200
+    : (state.particles.length || state.ripples.length || state.arcs.length || state.banner || state.nameFlash);
+  if (!still || moving || needsDraw){ render(); needsDraw = false; }
   botTick(dt);
 }
 
